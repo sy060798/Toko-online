@@ -100,6 +100,22 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
   .grid {grid-template-columns:1fr}
   .photo {height:260px}
 }
+
+#generatedOrderCode {
+  display: block;
+  font-size: 19px;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+#proofUploadForm .btn {
+  width: 100%;
+}
+
+#proofUploadButton {
+  margin-top: 12px;
+}
 </style>
 </head>
 <body>
@@ -135,80 +151,6 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
     <input class="search" id="search" placeholder="Cari nama parfum..." aria-label="Cari parfum">
     <div class="grid" id="products"></div>
   </section>
-
-  
-
-<section id="paymentProofSection" style="margin-top:45px">
-  <div class="eyebrow">PAYMENT VERIFICATION</div>
-
-  <button
-    class="btn gold"
-    id="toggleProofPanel"
-    type="button"
-    aria-expanded="false"
-    aria-controls="proofPanel"
-  >
-    Upload bukti pembayaran
-  </button>
-
-  <div id="proofPanel" hidden>
-    <h2 style="margin-top:20px">
-      Upload bukti pembayaran
-    </h2>
-
-    <p class="note">
-      Masukkan kode pesanan untuk memulai proses
-      upload bukti transfer.
-    </p>
-
-    <form id="proofUploadForm">
-      <label class="field">
-        Kode pesanan
-        <input
-          id="proofOrderCode"
-          name="order_code"
-          required
-          placeholder="ESS-20261023-ABC123"
-          pattern="ESS-[0-9]{8}-[A-Z0-9]{6}"
-          maxlength="19"
-          autocomplete="off"
-        >
-      </label>
-
-      <label class="field">
-        File bukti transfer
-        <input
-          type="file"
-          id="proofUploadFile"
-          name="payment_proof"
-          accept=".jpg,.jpeg,.png,.webp,.pdf"
-          required
-        >
-        <span class="note">
-          JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.
-        </span>
-      </label>
-
-      <div id="proofUploadPreview"></div>
-
-      <button
-        class="btn gold"
-        id="uploadProofButton"
-        type="submit"
-      >
-        Upload bukti pembayaran
-      </button>
-    </form>
-
-    <div
-      id="proofUploadResult"
-      class="order-result"
-      aria-live="polite"
-    ></div>
-  </div>
-</section>
-
-
 </main>
 
 <footer>ESSENCE PERFUME ATELIER · Temukan aroma khasmu.</footer>
@@ -266,53 +208,83 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
       </label>
 
       <div class="notice">
-  <strong>Langkah pembayaran</strong><br>
-  1. Buat pesanan terlebih dahulu.<br>
-  2. Simpan kode pesanan yang diberikan.<br>
-  3. Gunakan kode pesanan untuk mengunggah bukti transfer.<br>
-  4. Admin akan memeriksa pembayaran sebelum mengonfirmasi pesanan.
-</div>
-
-      <div class="total-line">
-        <span>Total yang harus ditransfer</span>
-        <strong id="checkoutTotal"></strong>
+        <strong>Transfer bank</strong><br>
+        Bank: <span id="bankName">BCA</span><br>
+        Nomor rekening: <span id="bankAccount">4870904881</span><br>
+        Atas nama: <span id="bankOwner">Ahmad Syahril</span><br><br>
+        Ganti informasi dengan rekening toko yang benar sebelum menerima pesanan.
       </div>
 
-      <!-- TAMBAHAN: UPLOAD BUKTI TRANSFER -->
-      <label class="field">Upload bukti transfer *
-        <input
-          type="file"
-          id="paymentProof"
-          name="paymentProof"
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          required
-        >
-        <span class="note">Format JPG, PNG, WEBP atau PDF. Maksimal 5 MB.</span>
-      </label>
-
-      <div id="proofPreview"></div>
-
-      <label class="field">
-        <input type="checkbox" id="paymentConfirmation" required style="display:inline;width:auto">
-        Saya sudah melakukan transfer sesuai nominal yang tertera.
-      </label>
-
-      <button class="btn whatsapp" type="submit" id="submitOrder" style="width:100%">
-        Buat pesanan & kirim ke WhatsApp
-      </button>
-
-      <p class="note">
-        Setelah WhatsApp terbuka, lampirkan bukti transfer di chat admin
-        dan tekan Kirim. Pesanan baru terkonfirmasi setelah admin memeriksa pembayaran.
-      </p>
-    </form>
-
-    <div id="orderResult" class="order-result" aria-live="polite"></div>
-  </div>
+      
+<div class="total-line">
+  <span>Total yang harus ditransfer</span>
+  <strong id="checkoutTotal"></strong>
 </div>
 
-<!-- TAHAP 2 DIMULAI: TEMPEL KODE JAVASCRIPT DI SINI -->
+<div class="notice">
+  <strong>Langkah pembayaran</strong><br>
+  1. Buat pesanan terlebih dahulu.<br>
+  2. Salin kode pesanan yang muncul.<br>
+  3. Transfer sesuai total pembayaran.<br>
+  4. Upload bukti transfer.<br>
+  5. Kirim rincian pesanan ke WhatsApp admin.
+</div>
+
+<button
+  class="btn"
+  type="submit"
+  id="submitOrder"
+  style="width:100%">
+  Buat pesanan
+</button>
+</form>
+
+<div id="orderResult"
+     class="order-result"
+     aria-live="polite"></div>
+
+<section id="paymentProofSection" style="margin-top:25px" hidden>
+  <h3>Konfirmasi pembayaran</h3>
+
+  <p class="note">
+    Kode pesanan:
+    <strong id="proofOrderCode"></strong>
+  </p>
+
+  <button
+    type="button"
+    class="btn light"
+    id="copyOrderCode">
+    Salin kode pesanan
+  </button>
+
+  <label class="field">
+    Upload bukti transfer
+    <input
+      type="file"
+      id="paymentProof"
+      accept="image/jpeg,image/png,image/webp,application/pdf">
+    <span class="note">
+      JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.
+    </span>
+  </label>
+
+  <div id="proofPreview"></div>
+
+  <button
+    type="button"
+    class="btn whatsapp"
+    id="sendProof"
+    style="width:100%">
+    Upload bukti & kirim ke WhatsApp
+  </button>
+</section>
+</div>
+</div>
+
+<!-- JAVASCRIPT DILANJUTKAN DI BAWAH -->
 <script>
+
 
 const API_BASE = "/api";
 const SHIPPING_FEE = 6000;
@@ -791,19 +763,6 @@ document.getElementById("checkoutForm").addEventListener(
   }
 );
 
-
-const proofToggle = document.getElementById("toggleProofPanel");
-const proofPanel = document.getElementById("proofPanel");
-
-proofToggle.addEventListener("click", () => {
-  const willOpen = proofPanel.hidden;
-  proofPanel.hidden = !willOpen;
-
-  proofToggle.setAttribute(
-    "aria-expanded",
-    String(willOpen)
-  );
-});
 
 renderProducts();
 updateCart();
