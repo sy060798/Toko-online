@@ -543,128 +543,180 @@ function buildOrderMessage(order) {
 }
 
 /* SUBMIT CHECKOUT DAN BUKA WHATSAPP */
-document.getElementById("checkoutForm").addEventListener("submit", event => {
-  event.preventDefault();
 
-  if (!cart.length) {
-    alert("Keranjang masih kosong.");
-    return;
-  }
+/* SIMPAN PESANAN KE TURSO, LALU BUKA WHATSAPP */
+document.getElementById("checkoutForm").addEventListener(
+  "submit",
+  async event => {
+    event.preventDefault();
 
-  if (!validAdminNumber(CONFIG.adminWhatsApp)) {
-    alert("Periksa nomor WhatsApp admin pada konfigurasi.");
-    return;
-  }
-
-  if (!bankIsConfigured()) {
-    alert("Lengkapi informasi rekening toko terlebih dahulu.");
-    return;
-  }
-
-  const form = event.currentTarget;
-  const file = document.getElementById("paymentProof").files[0];
-
-  if (!file) {
-    alert("Silakan upload bukti transfer terlebih dahulu.");
-    return;
-  }
-
-  if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE) {
-    alert("Format atau ukuran bukti transfer tidak valid.");
-    return;
-  }
-
-  if (!document.getElementById("paymentConfirmation").checked) {
-    alert("Centang konfirmasi bahwa kamu sudah melakukan transfer.");
-    return;
-  }
-
-  const formData = new FormData(form);
-
-  const order = {
-    id: makeOrderId(),
-    name: String(formData.get("name") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
-    address: String(formData.get("address") || "").trim(),
-    items: cart.map(p => ({...p})),
-    subtotal: getSubtotal(),
-    total: getGrandTotal(),
-    fileName: file.name
-  };
-
-  if (!order.name || !order.phone || !order.address) {
-    alert("Mohon lengkapi nama, nomor WhatsApp, dan alamat.");
-    return;
-  }
-
-  const message = buildOrderMessage(order);
-  const whatsappUrl =
-    "https://wa.me/" + CONFIG.adminWhatsApp +
-    "?text=" + encodeURIComponent(message);
-
-  /*
-   * Buka WhatsApp langsung dari tindakan pengguna
-   * agar tidak mudah diblokir oleh browser.
-   */
-  const whatsappWindow = window.open(whatsappUrl, "_blank");
-
-  const result = document.getElementById("orderResult");
-  result.replaceChildren();
-
-  if (!whatsappWindow) {
-    result.className = "order-result error";
-    result.textContent =
-      "WhatsApp tidak dapat dibuka. Izinkan popup browser lalu coba lagi.";
-    return;
-  }
-
-  whatsappWindow.opener = null;
-
-  result.className = "order-result success";
-
-  const title = document.createElement("strong");
-  title.textContent = "Pesanan siap dikirim!";
-
-  const details = document.createElement("p");
-  details.textContent =
-    "Nomor pesanan: " + order.id +
-    ". Pesan WhatsApp sudah disiapkan. Lampirkan file bukti transfer " +
-    file.name + " di chat admin, lalu tekan Kirim.";
-
-  const copyButton = document.createElement("button");
-  copyButton.type = "button";
-  copyButton.className = "btn light";
-  copyButton.style.width = "100%";
-  copyButton.textContent = "Salin rincian pesanan";
-
-  copyButton.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(message);
-      copyButton.textContent = "Rincian berhasil disalin";
-    } catch {
-      alert("Tidak dapat menyalin otomatis. Silakan salin pesan dari WhatsApp.");
+    if (!cart.length) {
+      alert("Keranjang masih kosong.");
+      return;
     }
-  });
 
-  const reopenButton = document.createElement("button");
-  reopenButton.type = "button";
-  reopenButton.className = "btn whatsapp";
-  reopenButton.style.width = "100%";
-  reopenButton.style.marginTop = "8px";
-  reopenButton.textContent = "Buka WhatsApp lagi";
+    if (!validAdminNumber(CONFIG.adminWhatsApp)) {
+      alert("Periksa nomor WhatsApp admin pada konfigurasi.");
+      return;
+    }
 
-  reopenButton.addEventListener("click", () => {
-    window.open(whatsappUrl, "_blank");
-  });
+    if (!bankIsConfigured()) {
+      alert("Lengkapi informasi rekening toko terlebih dahulu.");
+      return;
+    }
 
-  result.append(title, details, copyButton, reopenButton);
+    const form = event.currentTarget;
+    const file = document.getElementById("paymentProof").files[0];
+    const result = document.getElementById("orderResult");
+    const submitButton = document.getElementById("submitOrder");
 
-  /*
-   * Keranjang sengaja tidak dihapus otomatis.
-   * Website tidak dapat memastikan bahwa pengguna
-   * benar-benar menekan Kirim di WhatsApp.
-   */
-});
+    if (!file) {
+      alert("Silakan upload bukti transfer terlebih dahulu.");
+      return;
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type) ||
+        file.size > MAX_FILE_SIZE) {
+      alert("Format atau ukuran bukti transfer tidak valid.");
+      return;
+    }
+
+    if (!document.getElementById("paymentConfirmation").checked) {
+      alert("Centang konfirmasi bahwa kamu sudah melakukan transfer.");
+      return;
+    }
+
+    const formData = new FormData(form);
+
+    const name = String(formData.get("name") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const address = String(formData.get("address") || "").trim();
+
+    if (!name || !phone || !address) {
+      alert("Lengkapi nama, nomor WhatsApp, dan alamat.");
+      return;
+    }
+
+    // Buka tab kosong langsung dari tindakan pengguna agar
+    // browser tidak memblokir pembukaan WhatsApp setelah fetch.
+    const whatsappWindow = window.open("about:blank", "_blank");
+
+    if (!whatsappWindow) {
+      result.className = "order-result error";
+      result.textContent =
+        "Popup diblokir. Izinkan popup browser lalu coba lagi.";
+      return;
+    }
+
+    whatsappWindow.opener = null;
+    whatsappWindow.document.title = "Memproses pesanan ESSENCE";
+
+    const oldButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = "Menyimpan pesanan...";
+    result.className = "order-result";
+    result.textContent = "Sedang menyimpan pesanan ke database...";
+
+    try {
+      const response = await fetch(`${API_BASE}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          whatsapp: phone,
+          items: cart.map(p => ({
+            name: p.name,
+            quantity: p.quantity
+          }))
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Pesanan gagal disimpan ke database."
+        );
+      }
+
+      // Gunakan kode dan total yang dikembalikan backend.
+      const order = {
+        id: data.order_code,
+        name,
+        phone,
+        address,
+        items: cart.map(p => ({ ...p })),
+        subtotal: getSubtotal(),
+        total: data.total_price,
+        fileName: file.name
+      };
+
+      const message = buildOrderMessage(order);
+      const whatsappUrl =
+        "https://wa.me/" + CONFIG.adminWhatsApp +
+        "?text=" + encodeURIComponent(message);
+
+      result.className = "order-result success";
+
+      const title = document.createElement("strong");
+      title.textContent = "Pesanan berhasil disimpan!";
+
+      const details = document.createElement("p");
+      details.textContent =
+        "Kode pesanan: " + order.id +
+        ". Total: " + rupiah(order.total) +
+        ". WhatsApp akan dibuka untuk mengirim rincian pesanan.";
+
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "btn light";
+      copyButton.style.width = "100%";
+      copyButton.textContent = "Salin rincian pesanan";
+
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(message);
+          copyButton.textContent = "Rincian berhasil disalin";
+        } catch {
+          alert("Gagal menyalin otomatis. Salin pesan dari WhatsApp.");
+        }
+      });
+
+      const reopenButton = document.createElement("button");
+      reopenButton.type = "button";
+      reopenButton.className = "btn whatsapp";
+      reopenButton.style.width = "100%";
+      reopenButton.style.marginTop = "8px";
+      reopenButton.textContent = "Buka WhatsApp lagi";
+
+      reopenButton.addEventListener("click", () => {
+        window.open(whatsappUrl, "_blank");
+      });
+
+      result.replaceChildren(title, details, copyButton, reopenButton);
+
+      // Arahkan tab yang sudah dibuka ke WhatsApp.
+      whatsappWindow.location.href = whatsappUrl;
+
+    } catch (error) {
+      // Jangan mengarahkan pelanggan ke WhatsApp seolah-olah
+      // pesanan tersimpan apabila API mengembalikan kegagalan.
+      try {
+        whatsappWindow.close();
+      } catch (_) {}
+
+      result.className = "order-result error";
+      result.textContent =
+        error.message ||
+        "Gagal menyimpan pesanan. Periksa koneksi dan coba lagi.";
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = oldButtonText;
+    }
+  }
+);
+
 
 renderProducts();
 updateCart();
