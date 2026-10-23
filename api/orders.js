@@ -4,7 +4,6 @@ const crypto = require("crypto");
 
 const SHIPPING_FEE = 6000;
 
-// Harga harus sama dengan harga resmi di index.html.
 const PRODUCT_PRICES = {
   "Velvet Oud": 185000,
   "Rose Élégance": 155000,
@@ -14,16 +13,16 @@ const PRODUCT_PRICES = {
 function json(res, status, data) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   return res.status(status).json(data);
 }
 
-
 function makeOrderCode() {
-  const date = new Date();
-  const ymd = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
+  const d = new Date();
+  const date = [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
   ].join("");
 
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -33,26 +32,16 @@ function makeOrderCode() {
     random += alphabet[crypto.randomInt(alphabet.length)];
   }
 
-  return `ESS-${ymd}-${random}`;
+  return `ESS-${date}-${random}`;
 }
-
 
 function normalizeWhatsApp(value) {
   let phone = String(value || "").replace(/\D/g, "");
 
-  if (phone.startsWith("0")) {
-    phone = "62" + phone.slice(1);
-  }
+  if (phone.startsWith("0")) phone = "62" + phone.slice(1);
+  else if (phone.startsWith("8")) phone = "62" + phone;
 
-  if (phone.startsWith("8")) {
-    phone = "62" + phone;
-  }
-
-  if (!/^62\d{8,13}$/.test(phone)) {
-    return null;
-  }
-
-  return phone;
+  return /^62\d{8,13}$/.test(phone) ? phone : null;
 }
 
 module.exports = async function handler(req, res) {
@@ -74,34 +63,36 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    const items = body.items;
+    const name = String(body.name || "").trim();
+    const address = String(body.address || "").trim();
     const whatsapp = normalizeWhatsApp(body.whatsapp);
+    const items = body.items;
 
-    if (!whatsapp) {
-      return json(res, 400, {
-        error: "Nomor WhatsApp tidak valid."
-      });
+    if (!name || name.length > 120) {
+      return json(res, 400, { error: "Nama pembeli tidak valid." });
     }
 
-    if (
-      !Array.isArray(items) ||
-      items.length < 1 ||
-      items.length > 20
-    ) {
-      return json(res, 400, {
-        error: "Daftar produk tidak valid."
-      });
+    if (!address || address.length > 1000) {
+      return json(res, 400, { error: "Alamat tidak valid." });
+    }
+
+    if (!whatsapp) {
+      return json(res, 400, { error: "Nomor WhatsApp tidak valid." });
+    }
+
+    if (!Array.isArray(items) || items.length < 1 || items.length > 20) {
+      return json(res, 400, { error: "Daftar produk tidak valid." });
     }
 
     let subtotal = 0;
     const normalizedItems = [];
 
     for (const item of items) {
-      const name = String(item.name || "");
+      const productName = String(item.name || "");
       const quantity = Number(item.quantity);
 
       if (
-        !Object.prototype.hasOwnProperty.call(PRODUCT_PRICES, name) ||
+        !Object.prototype.hasOwnProperty.call(PRODUCT_PRICES, productName) ||
         !Number.isSafeInteger(quantity) ||
         quantity < 1 ||
         quantity > 100
@@ -111,58 +102,49 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      subtotal += PRODUCT_PRICES[name] * quantity;
-
-      normalizedItems.push({
-        name,
-        quantity
-      });
+      subtotal += PRODUCT_PRICES[productName] * quantity;
+      normalizedItems.push({ name: productName, quantity });
     }
 
     const total = subtotal + SHIPPING_FEE;
 
     if (!Number.isSafeInteger(total) || total > 100000000) {
-      return json(res, 400, {
-        error: "Total pesanan tidak valid."
-      });
+      return json(res, 400, { error: "Total pesanan tidak valid." });
     }
 
     const productNames = normalizedItems
       .map(item => `${item.name} x${item.quantity}`)
       .join(", ");
 
-    db = createClient({
-      url: databaseUrl,
-      authToken
-    });
+    db = createClient({ url: databaseUrl, authToken });
 
-    // Beberapa percobaan untuk menghindari kode pesanan duplikat.
     for (let attempt = 0; attempt < 3; attempt++) {
       const orderCode = makeOrderCode();
 
       try {
         await db.execute({
           sql: `INSERT INTO orders
-            (order_code, product_names, total_price, whatsapp)
-            VALUES (?, ?, ?, ?)`,
-          args: [orderCode, productNames, total, whatsapp]
+            (order_code, product_names, total_price, whatsapp, customer_name, address)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [orderCode, productNames, total, whatsapp, name, address]
         });
 
         return json(res, 201, {
           success: true,
           order_code: orderCode,
           product_names: productNames,
+          items: normalizedItems,
+          subtotal,
+          shipping_fee: SHIPPING_FEE,
           total_price: total,
-          whatsapp
+          whatsapp,
+          name,
+          address
         });
       } catch (error) {
-        if (
-          error.message &&
-          error.message.toLowerCase().includes("unique")
-        ) {
+        if (String(error.message).toLowerCase().includes("unique")) {
           continue;
         }
-
         throw error;
       }
     }
@@ -174,13 +156,11 @@ module.exports = async function handler(req, res) {
     console.error("Gagal menyimpan pesanan:", error.message);
 
     return json(res, 500, {
-      error: "Pesanan belum tersimpan. Silakan coba kembali."
+      error: "Pesanan belum tersimpan. Periksa struktur tabel database."
     });
   } finally {
     if (db) {
-      try {
-        db.close();
-      } catch (_) {}
+      try { db.close(); } catch (_) {}
     }
   }
 };
