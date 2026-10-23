@@ -677,11 +677,25 @@ document.getElementById("checkoutForm").addEventListener(
         );
       }
 
-      if (!data.order_code) {
-        throw new Error(
-          "Server belum mengembalikan kode pesanan."
-        );
-      }
+      if (!const orderCode =
+  data.order_code ??
+  data.order?.order_code ??
+  data.order?.id ??
+  data.id ??
+  data.order_id;
+
+if (
+  typeof orderCode !== "string" &&
+  typeof orderCode !== "number"
+) {
+  throw new Error(
+    data.error || "Server tidak mengembalikan kode pesanan yang valid."
+  );
+}
+
+if (!String(orderCode).trim()) {
+  throw new Error("Kode pesanan kosong.");
+}
 
       const total = Number(data.total_price);
 
@@ -697,7 +711,7 @@ document.getElementById("checkoutForm").addEventListener(
         dibuat sendiri oleh browser.
       */
       currentOrder = {
-        id: String(data.order_code),
+        id: String(orderCode),
         name,
         phone,
         address,
