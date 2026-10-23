@@ -1,9 +1,14 @@
 
+const cloudinary = require("cloudinary").v2;
 const { createClient } = require("@libsql/client");
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp", "pdf"];
 
 function json(res, status, data) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   return res.status(status).json(data);
 }
 
@@ -15,20 +20,30 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const databaseUrl = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const {
+    TURSO_DATABASE_URL: databaseUrl,
+    TURSO_AUTH_TOKEN: authToken,
+    CLOUDINARY_CLOUD_NAME: cloudName,
+    CLOUDINARY_API_KEY: apiKey,
+    CLOUDINARY_API_SECRET: apiSecret
+  } = process.env;
 
-  if (!databaseUrl || !authToken || !cloudName) {
+  if (
+    !databaseUrl ||
+    !authToken ||
+    !cloudName ||
+    !apiKey ||
+    !apiSecret
+  ) {
     return json(res, 500, {
       error: "Konfigurasi server belum lengkap."
     });
   }
 
   const body = req.body || {};
-  const orderCode = String(body.order_code || "");
-  const publicId = String(body.public_id || "");
-  const version = String(body.version || "");
+  const orderCode = String(body.order_code || "").trim();
+  const publicId = String(body.public_id || "").trim();
+  const version = Number(body.version);
   const format = String(body.format || "").toLowerCase();
 
   if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
@@ -37,20 +52,20 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // Public ID harus persis mengikuti format yang ditetapkan server.
-  if (publicId !== `essence/payment-proofs/${orderCode}`) {
+  // Public ID hanya kode pesanan, bukan path folder.
+  if (publicId !== orderCode) {
     return json(res, 400, {
       error: "Identitas file tidak sesuai."
     });
   }
 
-  if (!/^\d{1,12}$/.test(version)) {
+  if (!Number.isSafeInteger(version) || version <= 0) {
     return json(res, 400, {
       error: "Versi file tidak valid."
     });
   }
 
-  if (!["jpg", "jpeg", "png", "webp", "pdf"].includes(format)) {
+  if (!ALLOWED_FORMATS.includes(format)) {
     return json(res, 400, {
       error: "Format file tidak diizinkan."
     });
@@ -59,13 +74,24 @@ module.exports = async function handler(req, res) {
   let db;
 
   try {
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret
+    });
+
     db = createClient({
       url: databaseUrl,
       authToken
     });
 
     const result = await db.execute({
-      sql: "SELECT id FROM orders WHERE order_code = ? LIMIT 1",
+      sql: `SELECT
+              id,
+              payment_proof_public_id
+            FROM orders
+            WHERE order_code = ?
+            LIMIT 1`,
       args: [orderCode]
     });
 
@@ -75,30 +101,77 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // URL authenticated asset bukan tautan publik yang dapat dibuka
-    // begitu saja. Akses admin perlu menggunakan mekanisme privat.
-    const proofUrl =
-      `https://res.cloudinary.com/${cloudName}/` +
-      `authenticated/upload/v${version}/` +
-      `essence/payment-proofs/${orderCode}.${format}`;
+    if (result.rows[0].payment_proof_public_id) {
+      return json(res, 409, {
+        error: "Bukti pembayaran sudah tersimpan."
+      });
+    }
 
-    await db.execute({
-      sql: `UPDATE orders
-            SET payment_proof_url = ?
-            WHERE order_code = ?`,
-      args: [proofUrl, orderCode]
+    // Ambil metadata dari Cloudinary, bukan memercayai
+    // versi dan format yang dikirim browser.
+    const asset = await cloudinary.api.resource(publicId, {
+      resource_type: "image",
+      type: "authenticated"
     });
+
+    if (
+      asset.public_id !== orderCode ||
+      asset.version !== version ||
+      asset.format !== format ||
+      asset.type !== "authenticated" ||
+      asset.resource_type !== "image" ||
+      !Number.isFinite(asset.bytes) ||
+      asset.bytes <= 0 ||
+      asset.bytes > MAX_FILE_SIZE
+    ) {
+      return json(res, 400, {
+        error: "Aset Cloudinary tidak sesuai dengan ketentuan."
+      });
+    }
+
+    // Simpan metadata. Jangan membentuk URL seolah-olah
+    // aset authenticated merupakan tautan publik.
+    const saved = await db.execute({
+      sql: `UPDATE orders
+            SET payment_proof_public_id = ?,
+                payment_proof_version = ?,
+                payment_proof_format = ?,
+                payment_proof_resource_type = ?,
+                payment_proof_uploaded_at = ?
+            WHERE order_code = ?
+              AND payment_proof_public_id IS NULL`,
+      args: [
+        asset.public_id,
+        asset.version,
+        asset.format,
+        asset.resource_type,
+        new Date().toISOString(),
+        orderCode
+      ]
+    });
+
+    if (saved.rowsAffected !== 1) {
+      return json(res, 409, {
+        error: "Bukti pembayaran gagal disimpan atau sudah tersimpan."
+      });
+    }
 
     return json(res, 200, {
       success: true,
       order_code: orderCode,
-      message: "Referensi bukti transfer berhasil disimpan."
+      message: "Referensi bukti pembayaran berhasil diverifikasi dan disimpan."
     });
   } catch (error) {
-    console.error("Gagal menyimpan referensi bukti transfer.");
+    if (error.http_code === 404) {
+      return json(res, 400, {
+        error: "Aset belum ditemukan di Cloudinary."
+      });
+    }
+
+    console.error("Gagal memverifikasi atau menyimpan bukti pembayaran.");
 
     return json(res, 500, {
-      error: "Gagal menyimpan referensi bukti transfer."
+      error: "Gagal memverifikasi atau menyimpan bukti pembayaran."
     });
   } finally {
     if (db) {
