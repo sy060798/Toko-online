@@ -1,0 +1,673 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESSENCE — Perfume Atelier</title>
+<style>
+:root {
+  --bg:#f8f5ef; --ink:#211d18; --gold:#a47d45;
+  --muted:#82796d; --line:#e7dfd3; --white:#fff;
+}
+* {box-sizing:border-box}
+body {
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:Arial,Helvetica,sans-serif;
+}
+button,input,textarea,select {font:inherit}
+button {cursor:pointer}
+header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 6%;background:#fff;border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:5;
+}
+.brand {font-family:Georgia,serif;font-size:25px;letter-spacing:4px}
+.brand small {display:block;font:9px Arial;letter-spacing:4px;color:var(--gold);margin-top:5px}
+.btn {
+  border:0;background:var(--ink);color:white;padding:13px 18px;
+  border-radius:3px;
+}
+.btn.gold {background:var(--gold)}
+.btn.light {background:white;color:var(--ink);border:1px solid var(--line)}
+.btn.whatsapp {background:#176b43}
+.btn:disabled {opacity:.6;cursor:not-allowed}
+main {max-width:1180px;margin:auto;padding:28px 5% 70px}
+.hero {
+  min-height:320px;display:flex;align-items:center;padding:36px;
+  color:white;background:linear-gradient(90deg,#171410e8,#17141055),
+  url('https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1400&q=85') center/cover;
+}
+.eyebrow {color:#d8b984;letter-spacing:3px;font-size:11px}
+.hero h1 {font:clamp(38px,6vw,66px) Georgia,serif;font-weight:normal;margin:18px 0}
+.hero p {color:#eee5d9;line-height:1.8;max-width:400px}
+.section-head {display:flex;justify-content:space-between;align-items:end;margin:42px 0 22px}
+h2 {font:30px Georgia,serif;font-weight:normal;margin:0}
+.section-head p {color:var(--muted);font-size:13px}
+.search {width:100%;padding:13px;border:1px solid var(--line);background:white;margin-bottom:22px}
+.grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.card {background:white;border:1px solid var(--line);padding:12px}
+.photo {width:100%;height:260px;object-fit:cover;background:#e9e0d3}
+.tag {font-size:10px;color:var(--gold);letter-spacing:2px;margin-top:16px}
+.card h3 {font:23px Georgia,serif;margin:9px 0}
+.price {font-weight:bold;margin:10px 0 14px}
+.card-actions {display:flex;gap:8px}
+.card-actions button {flex:1;padding:11px 5px;font-size:12px}
+.note {color:var(--muted);font-size:12px;line-height:1.7}
+.overlay {
+  display:none;position:fixed;inset:0;background:#17141099;
+  z-index:10;overflow:auto;padding:22px;align-items:center;justify-content:center;
+}
+.overlay.show {display:flex}
+.modal {
+  background:var(--bg);width:100%;max-width:620px;max-height:92vh;
+  overflow:auto;padding:25px;position:relative;
+}
+.modal h2 {margin:10px 0 18px}
+.close {float:right;background:transparent;border:0;font-size:26px}
+.field {display:block;margin:15px 0;font-size:13px}
+.field input,.field textarea,.field select {
+  display:block;width:100%;padding:12px;border:1px solid var(--line);
+  background:white;margin-top:7px;border-radius:2px;
+}
+.field textarea {min-height:90px;resize:vertical}
+.cart-row {padding:14px 0;border-bottom:1px solid var(--line)}
+.cart-row strong {display:block;margin-bottom:8px}
+.qty {display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap}
+.qty button {padding:5px 11px;border:1px solid var(--line);background:white}
+.total-line {display:flex;justify-content:space-between;gap:15px;margin:14px 0}
+.total-line.final {border-top:1px solid var(--line);padding-top:15px;font-size:19px;font-weight:bold}
+.notice {background:#eee7da;padding:15px;line-height:1.8;font-size:13px;margin:15px 0}
+.proof-preview {
+  margin-top:10px;padding:12px;background:white;border:1px solid var(--line);
+}
+.proof-preview img {
+  display:block;max-width:100%;max-height:220px;object-fit:contain;margin-top:10px;
+}
+.order-result {font-size:13px;line-height:1.8;margin-top:15px;overflow-wrap:anywhere}
+.order-result.success {background:#e3f1e7;padding:14px;color:#175b36}
+.order-result.error {background:#f9e4df;padding:14px;color:#8b2f20}
+footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+@media(max-width:760px) {
+  .grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .photo {height:190px}
+  .card {padding:8px}
+  .card h3 {font-size:18px}
+  .hero {padding:25px;min-height:290px}
+  header {padding:16px 4%}
+}
+@media(max-width:390px) {
+  .grid {grid-template-columns:1fr}
+  .photo {height:260px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">ESSENCE<small>PERFUME ATELIER</small></div>
+  <button class="btn" onclick="openCart()">
+    Keranjang (<span id="count">0</span>)
+  </button>
+</header>
+
+<main>
+  <section class="hero">
+    <div>
+      <div class="eyebrow">YOUR SIGNATURE SCENT</div>
+      <h1>Aroma yang<br>menceritakanmu.</h1>
+      <p>Temukan aroma yang mencerminkan karakter, suasana hati,
+      dan cerita unikmu.</p>
+      <button class="btn gold" onclick="document.getElementById('koleksi').scrollIntoView({behavior:'smooth'})">
+        Jelajahi koleksi
+      </button>
+    </div>
+  </section>
+
+  <section id="koleksi">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">THE COLLECTION</div>
+        <h2>Koleksi parfum</h2>
+      </div>
+      <span class="note">Curated with care</span>
+    </div>
+    <input class="search" id="search" placeholder="Cari nama parfum..." aria-label="Cari parfum">
+    <div class="grid" id="products"></div>
+  </section>
+</main>
+
+<footer>ESSENCE PERFUME ATELIER · Temukan aroma khasmu.</footer>
+
+<!-- DETAIL PARFUM -->
+<div class="overlay" id="detailModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="close" onclick="closeModal('detailModal')" aria-label="Tutup">×</button>
+    <div class="eyebrow">FRAGRANCE NOTES</div>
+    <h2 id="detailName"></h2>
+    <div id="detailDescription" style="line-height:1.9;font-size:14px"></div>
+    <h3 id="detailPrice"></h3>
+    <button class="btn" id="detailAdd">Tambah ke keranjang</button>
+  </div>
+</div>
+
+<!-- KERANJANG -->
+<div class="overlay" id="cartModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="close" onclick="closeModal('cartModal')" aria-label="Tutup">×</button>
+    <div class="eyebrow">YOUR SELECTION</div>
+    <h2>Keranjang belanja</h2>
+    <div id="cartItems"></div>
+    <div class="total-line"><span>Subtotal parfum</span><strong id="subtotal"></strong></div>
+    <div class="total-line"><span>Jasa kirim</span><strong>Rp6.000</strong></div>
+    <div class="total-line final"><span>Total</span><span id="grandTotal"></span></div>
+    <button class="btn" style="width:100%" onclick="startCheckout()">Lanjut ke pemesanan</button>
+  </div>
+</div>
+
+<!-- CHECKOUT -->
+<div class="overlay" id="checkoutModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="close" onclick="closeModal('checkoutModal')" aria-label="Tutup">×</button>
+    <div class="eyebrow">DELIVERY & PAYMENT</div>
+    <h2>Detail pemesanan</h2>
+
+    <form id="checkoutForm">
+      <label class="field">Nama lengkap
+        <input name="name" required autocomplete="name">
+      </label>
+
+      <label class="field">Nomor WhatsApp
+        <input name="phone" required type="tel" autocomplete="tel">
+      </label>
+
+      <label class="field">Alamat lengkap
+        <textarea name="address" required placeholder="Jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, kode pos"></textarea>
+      </label>
+
+      <label class="field">Jasa pengiriman
+        <select name="shipping" required>
+          <option value="Reguler">Reguler — ongkir Rp6.000</option>
+        </select>
+      </label>
+
+      <div class="notice">
+        <strong>Transfer bank</strong><br>
+        Bank: <span id="bankName">ISI NAMA BANK</span><br>
+        Nomor rekening: <span id="bankAccount">ISI NOMOR REKENING</span><br>
+        Atas nama: <span id="bankOwner">ISI NAMA PEMILIK REKENING</span><br><br>
+        Ganti informasi dengan rekening toko yang benar sebelum menerima pesanan.
+      </div>
+
+      <div class="total-line">
+        <span>Total yang harus ditransfer</span>
+        <strong id="checkoutTotal"></strong>
+      </div>
+
+      <!-- TAMBAHAN: UPLOAD BUKTI TRANSFER -->
+      <label class="field">Upload bukti transfer *
+        <input
+          type="file"
+          id="paymentProof"
+          name="paymentProof"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          required
+        >
+        <span class="note">Format JPG, PNG, WEBP atau PDF. Maksimal 5 MB.</span>
+      </label>
+
+      <div id="proofPreview"></div>
+
+      <label class="field">
+        <input type="checkbox" id="paymentConfirmation" required style="display:inline;width:auto">
+        Saya sudah melakukan transfer sesuai nominal yang tertera.
+      </label>
+
+      <button class="btn whatsapp" type="submit" id="submitOrder" style="width:100%">
+        Buat pesanan & kirim ke WhatsApp
+      </button>
+
+      <p class="note">
+        Setelah WhatsApp terbuka, lampirkan bukti transfer di chat admin
+        dan tekan Kirim. Pesanan baru terkonfirmasi setelah admin memeriksa pembayaran.
+      </p>
+    </form>
+
+    <div id="orderResult" class="order-result" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- TAHAP 2 DIMULAI: TEMPEL KODE JAVASCRIPT DI SINI -->
+<script>
+
+const API_BASE = "/api";
+const SHIPPING_FEE = 6000;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf"
+];
+
+// GANTI DENGAN NOMOR WHATSAPP DAN REKENING TOKO ASLI
+const CONFIG = {
+  adminWhatsApp: "6281234567890",
+  bankName: "ISI NAMA BANK",
+  bankAccount: "ISI NOMOR REKENING",
+  bankOwner: "ISI NAMA PEMILIK REKENING"
+};
+
+const demoProducts = [
+  {
+    id:1, name:"Velvet Oud", price:185000,
+    image:"https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80",
+    description:`Velvet Oud menghadirkan karakter aroma hangat, dalam, dan elegan bagi pencinta wewangian yang berkesan. Bayangkan perpaduan nuansa kayu yang lembut dengan sentuhan rempah yang memberikan kesan dewasa dan berkarakter. Pada semprotan awal, aroma terasa tegas dan memikat. Seiring waktu, wanginya berkembang menjadi lebih lembut dan nyaman, menciptakan pengalaman parfum yang terasa personal. Karakter seperti ini cocok untuk malam hari, acara spesial, makan malam, maupun saat kamu ingin tampil lebih percaya diri. Padukan dengan pakaian formal atau gaya minimalis untuk kesan yang rapi dan mewah. Untuk hasil terbaik, semprotkan secukupnya pada titik nadi seperti pergelangan tangan dan leher. Hindari menggosok kulit setelah menyemprotkan parfum agar perkembangan aromanya tidak terganggu. Deskripsi ini merupakan konsep aroma; sesuaikan notes dengan komposisi parfum asli sebelum dipublikasikan.`,
+    notes:"Woody · Warm · Elegant"
+  },
+  {
+    id:2, name:"Rose Élégance", price:155000,
+    image:"https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=80",
+    description:`Rose Élégance merupakan konsep wewangian floral yang lembut, anggun, dan romantis. Nuansa bunga mawar memberikan kesan klasik, sementara sentuhan musk dapat menciptakan karakter yang terasa bersih dan dekat dengan kulit. Aromanya cocok bagi kamu yang menyukai wewangian feminin tanpa kesan terlalu mencolok. Gunakan saat bekerja, menghadiri acara santai, atau menikmati waktu bersama orang terdekat. Untuk suasana siang hari, cukup gunakan beberapa semprotan agar aroma terasa ringan. Saat malam, parfum floral dapat memberikan kesan yang lebih istimewa jika dipadukan dengan busana elegan. Simpan botol di tempat sejuk dan terhindar dari sinar matahari langsung untuk membantu menjaga kualitasnya. Ini adalah deskripsi contoh, bukan klaim komposisi resmi dari produk tertentu.`,
+    notes:"Floral · Rose · Soft Musk"
+  },
+  {
+    id:3, name:"Citrus No. 09", price:125000,
+    image:"https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=700&q=80",
+    description:`Citrus No. 09 menggambarkan kesegaran yang cerah, bersih, dan energik. Inspirasi aroma jeruk dan buah sitrus memberikan kesan pembuka yang segar, cocok untuk memulai hari dengan suasana positif. Karakter citrus sering disukai oleh orang yang mencari parfum ringan untuk aktivitas sehari-hari. Wewangian ini dapat menemani perjalanan, kegiatan kampus, pekerjaan, atau pertemuan kasual. Setelah aroma awal memudar, karakter lembut yang bersih dapat membuat pengalaman wanginya terasa nyaman. Jika kamu aktif sepanjang hari, bawalah parfum dalam ukuran perjalanan apabila tersedia dan gunakan kembali sesuai kebutuhan. Intensitas dan ketahanan sebenarnya bergantung pada formula, konsentrasi, kondisi kulit, dan lingkungan. Deskripsi ini merupakan contoh pemasaran dan perlu disesuaikan dengan aroma produk yang benar-benar dijual.`,
+    notes:"Citrus · Fresh · Clean"
+  }
+];
+
+let products = demoProducts;
+let cart = [];
+let selectedProduct = null;
+let proofPreviewUrl = null;
+
+const rupiah = n => new Intl.NumberFormat("id-ID", {
+  style:"currency",
+  currency:"IDR",
+  maximumFractionDigits:0
+}).format(n);
+
+function safe(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[c]);
+}
+
+function renderProducts() {
+  const q = document.getElementById("search").value.toLowerCase();
+
+  document.getElementById("products").innerHTML = products
+    .filter(p => p.name.toLowerCase().includes(q))
+    .map(p => `
+      <article class="card">
+        <img class="photo" src="${safe(p.image)}" alt="${safe(p.name)}" loading="lazy">
+        <div class="tag">${safe(p.notes || "EAU DE PARFUM")}</div>
+        <h3>${safe(p.name)}</h3>
+        <div class="price">${rupiah(Number(p.price))}</div>
+        <div class="card-actions">
+          <button class="btn light" onclick="showDetail(${Number(p.id)})">Detail</button>
+          <button class="btn" onclick="addCart(${Number(p.id)})">+ Keranjang</button>
+        </div>
+      </article>
+    `).join("");
+}
+
+function showDetail(id) {
+  selectedProduct = products.find(p => Number(p.id) === id);
+  if (!selectedProduct) return;
+
+  document.getElementById("detailName").textContent = selectedProduct.name;
+  document.getElementById("detailPrice").textContent = rupiah(selectedProduct.price);
+  document.getElementById("detailDescription").textContent = selectedProduct.description;
+
+  document.getElementById("detailAdd").onclick = () => {
+    addCart(selectedProduct.id);
+    closeModal("detailModal");
+  };
+
+  openModal("detailModal");
+}
+
+function addCart(id) {
+  const p = products.find(x => Number(x.id) === id);
+  if (!p) return;
+
+  const existing = cart.find(x => x.id === id);
+
+  if (existing) {
+    existing.quantity++;
+  } else {
+    cart.push({
+      id:p.id,
+      name:p.name,
+      price:Number(p.price),
+      quantity:1
+    });
+  }
+
+  updateCart();
+}
+
+function getSubtotal() {
+  return cart.reduce((sum,p) => sum + p.price * p.quantity, 0);
+}
+
+function getGrandTotal() {
+  return getSubtotal() + (cart.length ? SHIPPING_FEE : 0);
+}
+
+function updateCart() {
+  document.getElementById("count").textContent =
+    cart.reduce((s,p) => s + p.quantity, 0);
+
+  document.getElementById("cartItems").innerHTML = cart.length
+    ? cart.map(p => `
+      <div class="cart-row">
+        <strong>${safe(p.name)}</strong>
+        ${rupiah(p.price)} per botol
+        <div class="qty">
+          <button onclick="changeQty(${p.id},-1)">−</button>
+          <span>${p.quantity}</span>
+          <button onclick="changeQty(${p.id},1)">+</button>
+          <span>${rupiah(p.price*p.quantity)}</span>
+        </div>
+      </div>
+    `).join("")
+    : "<p>Keranjang masih kosong.</p>";
+
+  document.getElementById("subtotal").textContent = rupiah(getSubtotal());
+  document.getElementById("grandTotal").textContent = rupiah(getGrandTotal());
+  document.getElementById("checkoutTotal").textContent = rupiah(getGrandTotal());
+}
+
+function changeQty(id, delta) {
+  const p = cart.find(x => x.id === id);
+  if (!p) return;
+
+  p.quantity += delta;
+
+  if (p.quantity <= 0) {
+    cart = cart.filter(x => x.id !== id);
+  }
+
+  updateCart();
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add("show");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("show");
+}
+
+function openCart() {
+  updateCart();
+  openModal("cartModal");
+}
+
+function startCheckout() {
+  if (!cart.length) {
+    alert("Keranjang masih kosong.");
+    return;
+  }
+
+  closeModal("cartModal");
+  updateCart();
+
+  document.getElementById("bankName").textContent = CONFIG.bankName;
+  document.getElementById("bankAccount").textContent = CONFIG.bankAccount;
+  document.getElementById("bankOwner").textContent = CONFIG.bankOwner;
+
+  openModal("checkoutModal");
+}
+
+document.querySelectorAll(".overlay").forEach(el => {
+  el.addEventListener("click", e => {
+    if (e.target === el) closeModal(el.id);
+  });
+});
+
+document.getElementById("search").addEventListener("input", renderProducts);
+
+/* PREVIEW DAN VALIDASI FILE BUKTI TRANSFER */
+document.getElementById("paymentProof").addEventListener("change", event => {
+  const input = event.target;
+  const preview = document.getElementById("proofPreview");
+
+  if (proofPreviewUrl) {
+    URL.revokeObjectURL(proofPreviewUrl);
+    proofPreviewUrl = null;
+  }
+
+  preview.replaceChildren();
+  preview.className = "";
+
+  const file = input.files[0];
+  if (!file) return;
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    alert("Pilih file JPG, PNG, WEBP, atau PDF.");
+    input.value = "";
+    return;
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    alert("Ukuran bukti transfer maksimal 5 MB.");
+    input.value = "";
+    return;
+  }
+
+  preview.className = "proof-preview";
+
+  const label = document.createElement("p");
+  label.className = "note";
+  label.textContent = "Bukti transfer: " + file.name;
+  preview.appendChild(label);
+
+  if (file.type.startsWith("image/")) {
+    proofPreviewUrl = URL.createObjectURL(file);
+
+    const img = document.createElement("img");
+    img.src = proofPreviewUrl;
+    img.alt = "Preview bukti transfer";
+    preview.appendChild(img);
+  } else {
+    const info = document.createElement("p");
+    info.className = "note";
+    info.textContent = "File PDF siap dipilih untuk dikirim.";
+    preview.appendChild(info);
+  }
+});
+
+function bankIsConfigured() {
+  return [CONFIG.bankName, CONFIG.bankAccount, CONFIG.bankOwner]
+    .every(value => value.trim() && !value.includes("ISI "));
+}
+
+function validAdminNumber(number) {
+  return /^62\d{8,15}$/.test(number);
+}
+
+function makeOrderId() {
+  const d = new Date();
+
+  const date = [
+    d.getFullYear(),
+    String(d.getMonth()+1).padStart(2,"0"),
+    String(d.getDate()).padStart(2,"0")
+  ].join("");
+
+  return "ESS-" + date + "-" +
+    Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+function buildOrderMessage(order) {
+  const items = order.items.map(p =>
+    `- ${p.name} x${p.quantity}: ${rupiah(p.price*p.quantity)}`
+  );
+
+  return [
+    "*PESANAN BARU — ESSENCE PERFUME ATELIER*",
+    "",
+    `Nomor pesanan: ${order.id}`,
+    `Nama: ${order.name}`,
+    `WhatsApp pelanggan: ${order.phone}`,
+    `Alamat: ${order.address}`,
+    "",
+    "*Detail produk:*",
+    ...items,
+    "",
+    `Subtotal parfum: ${rupiah(order.subtotal)}`,
+    `Ongkir: ${rupiah(SHIPPING_FEE)}`,
+    `*TOTAL TRANSFER: ${rupiah(order.total)}*`,
+    "",
+    "*Rekening tujuan:*",
+    `Bank: ${CONFIG.bankName}`,
+    `Nomor rekening: ${CONFIG.bankAccount}`,
+    `Atas nama: ${CONFIG.bankOwner}`,
+    "",
+    `Nama file bukti transfer: ${order.fileName}`,
+    "",
+    "Bukti transfer akan saya lampirkan pada chat ini.",
+    "Mohon konfirmasi pesanan dan pembayaran saya."
+  ].join("\n");
+}
+
+/* SUBMIT CHECKOUT DAN BUKA WHATSAPP */
+document.getElementById("checkoutForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  if (!cart.length) {
+    alert("Keranjang masih kosong.");
+    return;
+  }
+
+  if (!validAdminNumber(CONFIG.adminWhatsApp)) {
+    alert("Periksa nomor WhatsApp admin pada konfigurasi.");
+    return;
+  }
+
+  if (!bankIsConfigured()) {
+    alert("Lengkapi informasi rekening toko terlebih dahulu.");
+    return;
+  }
+
+  const form = event.currentTarget;
+  const file = document.getElementById("paymentProof").files[0];
+
+  if (!file) {
+    alert("Silakan upload bukti transfer terlebih dahulu.");
+    return;
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE) {
+    alert("Format atau ukuran bukti transfer tidak valid.");
+    return;
+  }
+
+  if (!document.getElementById("paymentConfirmation").checked) {
+    alert("Centang konfirmasi bahwa kamu sudah melakukan transfer.");
+    return;
+  }
+
+  const formData = new FormData(form);
+
+  const order = {
+    id: makeOrderId(),
+    name: String(formData.get("name") || "").trim(),
+    phone: String(formData.get("phone") || "").trim(),
+    address: String(formData.get("address") || "").trim(),
+    items: cart.map(p => ({...p})),
+    subtotal: getSubtotal(),
+    total: getGrandTotal(),
+    fileName: file.name
+  };
+
+  if (!order.name || !order.phone || !order.address) {
+    alert("Mohon lengkapi nama, nomor WhatsApp, dan alamat.");
+    return;
+  }
+
+  const message = buildOrderMessage(order);
+  const whatsappUrl =
+    "https://wa.me/" + CONFIG.adminWhatsApp +
+    "?text=" + encodeURIComponent(message);
+
+  /*
+   * Buka WhatsApp langsung dari tindakan pengguna
+   * agar tidak mudah diblokir oleh browser.
+   */
+  const whatsappWindow = window.open(whatsappUrl, "_blank");
+
+  const result = document.getElementById("orderResult");
+  result.replaceChildren();
+
+  if (!whatsappWindow) {
+    result.className = "order-result error";
+    result.textContent =
+      "WhatsApp tidak dapat dibuka. Izinkan popup browser lalu coba lagi.";
+    return;
+  }
+
+  whatsappWindow.opener = null;
+
+  result.className = "order-result success";
+
+  const title = document.createElement("strong");
+  title.textContent = "Pesanan siap dikirim!";
+
+  const details = document.createElement("p");
+  details.textContent =
+    "Nomor pesanan: " + order.id +
+    ". Pesan WhatsApp sudah disiapkan. Lampirkan file bukti transfer " +
+    file.name + " di chat admin, lalu tekan Kirim.";
+
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "btn light";
+  copyButton.style.width = "100%";
+  copyButton.textContent = "Salin rincian pesanan";
+
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      copyButton.textContent = "Rincian berhasil disalin";
+    } catch {
+      alert("Tidak dapat menyalin otomatis. Silakan salin pesan dari WhatsApp.");
+    }
+  });
+
+  const reopenButton = document.createElement("button");
+  reopenButton.type = "button";
+  reopenButton.className = "btn whatsapp";
+  reopenButton.style.width = "100%";
+  reopenButton.style.marginTop = "8px";
+  reopenButton.textContent = "Buka WhatsApp lagi";
+
+  reopenButton.addEventListener("click", () => {
+    window.open(whatsappUrl, "_blank");
+  });
+
+  result.append(title, details, copyButton, reopenButton);
+
+  /*
+   * Keranjang sengaja tidak dihapus otomatis.
+   * Website tidak dapat memastikan bahwa pengguna
+   * benar-benar menekan Kirim di WhatsApp.
+   */
+});
+
+renderProducts();
+updateCart();
+</script>
+</body>
+</html>
