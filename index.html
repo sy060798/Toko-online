@@ -135,6 +135,54 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
     <input class="search" id="search" placeholder="Cari nama parfum..." aria-label="Cari parfum">
     <div class="grid" id="products"></div>
   </section>
+
+  
+<section id="paymentProofSection" style="margin-top:45px">
+  <div class="eyebrow">PAYMENT VERIFICATION</div>
+  <h2>Upload bukti pembayaran</h2>
+  <p class="note">
+    Masukkan kode pesanan untuk memulai proses upload bukti transfer.
+  </p>
+
+  <form id="proofUploadForm">
+    <label class="field">
+      Kode pesanan
+      <input
+        id="proofOrderCode"
+        name="order_code"
+        required
+        placeholder="ESS-20261023-ABC123"
+        pattern="ESS-[0-9]{8}-[A-Z0-9]{6}"
+        maxlength="19"
+        autocomplete="off"
+      >
+    </label>
+
+    <label class="field">
+      File bukti transfer
+      <input
+        type="file"
+        id="paymentProof"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        required
+      >
+      <span class="note">
+        JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.
+      </span>
+    </label>
+
+    <div id="proofPreview"></div>
+
+    <button class="btn gold" id="uploadProofButton" type="submit">
+      Upload bukti pembayaran
+    </button>
+  </form>
+
+  <div id="proofUploadResult"
+       class="order-result"
+       aria-live="polite"></div>
+</section>
+
 </main>
 
 <footer>ESSENCE PERFUME ATELIER · Temukan aroma khasmu.</footer>
@@ -192,12 +240,12 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
       </label>
 
       <div class="notice">
-        <strong>Transfer bank</strong><br>
-        Bank: <span id="bankName">BCA</span><br>
-        Nomor rekening: <span id="bankAccount">4870904881</span><br>
-        Atas nama: <span id="bankOwner">Ahmad Syahril</span><br><br>
-        Ganti informasi dengan rekening toko yang benar sebelum menerima pesanan.
-      </div>
+  <strong>Langkah pembayaran</strong><br>
+  1. Buat pesanan terlebih dahulu.<br>
+  2. Simpan kode pesanan yang diberikan.<br>
+  3. Gunakan kode pesanan untuk mengunggah bukti transfer.<br>
+  4. Admin akan memeriksa pembayaran sebelum mengonfirmasi pesanan.
+</div>
 
       <div class="total-line">
         <span>Total yang harus ditransfer</span>
