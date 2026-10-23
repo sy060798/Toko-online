@@ -137,51 +137,77 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
   </section>
 
   
+
 <section id="paymentProofSection" style="margin-top:45px">
   <div class="eyebrow">PAYMENT VERIFICATION</div>
-  <h2>Upload bukti pembayaran</h2>
-  <p class="note">
-    Masukkan kode pesanan untuk memulai proses upload bukti transfer.
-  </p>
 
-  <form id="proofUploadForm">
-    <label class="field">
-      Kode pesanan
-      <input
-        id="proofOrderCode"
-        name="order_code"
-        required
-        placeholder="ESS-20261023-ABC123"
-        pattern="ESS-[0-9]{8}-[A-Z0-9]{6}"
-        maxlength="19"
-        autocomplete="off"
-      >
-    </label>
+  <button
+    class="btn gold"
+    id="toggleProofPanel"
+    type="button"
+    aria-expanded="false"
+    aria-controls="proofPanel"
+  >
+    Upload bukti pembayaran
+  </button>
 
-    <label class="field">
-      File bukti transfer
-      <input
-        type="file"
-        id="paymentProof"
-        accept="image/jpeg,image/png,image/webp,application/pdf"
-        required
-      >
-      <span class="note">
-        JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.
-      </span>
-    </label>
-
-    <div id="proofPreview"></div>
-
-    <button class="btn gold" id="uploadProofButton" type="submit">
+  <div id="proofPanel" hidden>
+    <h2 style="margin-top:20px">
       Upload bukti pembayaran
-    </button>
-  </form>
+    </h2>
 
-  <div id="proofUploadResult"
-       class="order-result"
-       aria-live="polite"></div>
+    <p class="note">
+      Masukkan kode pesanan untuk memulai proses
+      upload bukti transfer.
+    </p>
+
+    <form id="proofUploadForm">
+      <label class="field">
+        Kode pesanan
+        <input
+          id="proofOrderCode"
+          name="order_code"
+          required
+          placeholder="ESS-20261023-ABC123"
+          pattern="ESS-[0-9]{8}-[A-Z0-9]{6}"
+          maxlength="19"
+          autocomplete="off"
+        >
+      </label>
+
+      <label class="field">
+        File bukti transfer
+        <input
+          type="file"
+          id="proofUploadFile"
+          name="payment_proof"
+          accept=".jpg,.jpeg,.png,.webp,.pdf"
+          required
+        >
+        <span class="note">
+          JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.
+        </span>
+      </label>
+
+      <div id="proofUploadPreview"></div>
+
+      <button
+        class="btn gold"
+        id="uploadProofButton"
+        type="submit"
+      >
+        Upload bukti pembayaran
+      </button>
+    </form>
+
+    <div
+      id="proofUploadResult"
+      class="order-result"
+      aria-live="polite"
+    ></div>
+  </div>
 </section>
+
 
 </main>
 
@@ -765,6 +791,19 @@ document.getElementById("checkoutForm").addEventListener(
   }
 );
 
+
+const proofToggle = document.getElementById("toggleProofPanel");
+const proofPanel = document.getElementById("proofPanel");
+
+proofToggle.addEventListener("click", () => {
+  const willOpen = proofPanel.hidden;
+  proofPanel.hidden = !willOpen;
+
+  proofToggle.setAttribute(
+    "aria-expanded",
+    String(willOpen)
+  );
+});
 
 renderProducts();
 updateCart();
