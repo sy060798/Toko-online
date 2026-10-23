@@ -1,5 +1,6 @@
 
 const { createClient } = require("@libsql/client");
+const crypto = require("crypto");
 
 const SHIPPING_FEE = 6000;
 
@@ -16,6 +17,7 @@ function json(res, status, data) {
   return res.status(status).json(data);
 }
 
+
 function makeOrderCode() {
   const date = new Date();
   const ymd = [
@@ -24,15 +26,16 @@ function makeOrderCode() {
     String(date.getDate()).padStart(2, "0")
   ].join("");
 
-  const random = Array.from(
-    { length: 6 },
-    () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[
-      Math.floor(Math.random() * 36)
-    ]
-  ).join("");
+  const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let random = "";
+
+  for (let i = 0; i < 6; i++) {
+    random += alphabet[crypto.randomInt(alphabet.length)];
+  }
 
   return `ESS-${ymd}-${random}`;
 }
+
 
 function normalizeWhatsApp(value) {
   let phone = String(value || "").replace(/\D/g, "");
