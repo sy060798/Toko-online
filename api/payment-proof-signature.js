@@ -5,60 +5,78 @@ const { createClient } = require("@libsql/client");
 const FOLDER = "essence/payment-proofs";
 const UPLOAD_PRESET = "essence_payment_proofs";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp", "pdf"];
+const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp"];
 
 function json(res, status, data) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer");
-
   return res.status(status).json(data);
 }
 
-module.exports = async function handler(req, res) {
+function getDb() {
+  if (!process.env.TURSO_DATABASE_URL ||
+      !process.env.TURSO_AUTH_TOKEN) {
+    throw new Error("Konfigurasi database Turso belum lengkap.");
+  }
+
+  return createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN
+  });
+}
+
+function configureCloudinary() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Konfigurasi Cloudinary belum lengkap.");
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true
+  });
+
+  return { cloudName, apiKey, apiSecret };
+}
+
+module.exports = async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return json(res, 405, {
       success: false,
-      error: "Gunakan metode POST."
+      error: "Metode request tidak diizinkan."
     });
   }
-
-  const {
-    CLOUDINARY_CLOUD_NAME: cloudName,
-    CLOUDINARY_API_KEY: apiKey,
-    CLOUDINARY_API_SECRET: apiSecret,
-    TURSO_DATABASE_URL: databaseUrl,
-    TURSO_AUTH_TOKEN: authToken
-  } = process.env;
-
-  if (!cloudName || !apiKey || !apiSecret || !databaseUrl || !authToken) {
-    return json(res, 500, {
-      success: false,
-      error: "Konfigurasi server belum lengkap."
-    });
-  }
-
-  const orderCode = String(req.body?.order_code || "").trim();
-
-  if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
-    return json(res, 400, {
-      success: false,
-      error: "Kode pesanan tidak valid."
-    });
-  }
-
-  let db;
 
   try {
-    db = createClient({ url: databaseUrl, authToken });
+    const { cloudName, apiKey, apiSecret } =
+      configureCloudinary();
+
+    const orderCode = String(
+      req.body?.order_code || ""
+    ).trim().toUpperCase();
+
+    if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
+      return json(res, 400, {
+        success: false,
+        error: "Kode pesanan tidak valid."
+      });
+    }
+
+    const db = getDb();
 
     const result = await db.execute({
-      sql: `SELECT order_code, payment_status, payment_proof_public_id
-            FROM orders
-            WHERE order_code = ?
-            LIMIT 1`,
+      sql: `
+        SELECT order_code, payment_status
+        FROM orders
+        WHERE order_code = ?
+        LIMIT 1
+      `,
       args: [orderCode]
     });
 
@@ -71,41 +89,29 @@ module.exports = async function handler(req, res) {
 
     const order = result.rows[0];
 
-    if (order.payment_proof_public_id) {
+    if (order.payment_status === "paid") {
       return json(res, 409, {
         success: false,
-        error: "Bukti pembayaran sudah tersimpan."
+        error: "Pesanan ini sudah dibayar."
       });
     }
-
-    if (order.payment_status !== "awaiting_payment") {
-      return json(res, 409, {
-        success: false,
-        error: "Status pesanan tidak mengizinkan upload bukti."
-      });
-    }
-
-    cloudinary.config({
-      cloud_name: cloudName,
-      api_key: apiKey,
-      api_secret: apiSecret,
-      secure: true
-    });
 
     const timestamp = Math.floor(Date.now() / 1000);
 
-    const params = {
-  timestamp,
-  folder: FOLDER,
-  public_id: orderCode,
-  overwrite: false,
-  type: "authenticated",
-  upload_preset: UPLOAD_PRESET,
-  allowed_formats: ALLOWED_FORMATS.join(",")
-};
+    // Hanya parameter yang benar-benar ditandatangani
+    // yang dimasukkan ke parameter signature.
+    const paramsToSign = {
+      allowed_formats: ALLOWED_FORMATS.join(","),
+      folder: FOLDER,
+      overwrite: "false",
+      public_id: orderCode,
+      timestamp,
+      type: "authenticated",
+      upload_preset: UPLOAD_PRESET
+    };
 
     const signature = cloudinary.utils.api_sign_request(
-      params,
+      paramsToSign,
       apiSecret
     );
 
@@ -124,20 +130,11 @@ module.exports = async function handler(req, res) {
       signature
     });
   } catch (error) {
-    console.error("Payment signature error:", {
-      message: error.message,
-      code: error.code
-    });
+    console.error("Payment signature API error:", error);
 
     return json(res, 500, {
       success: false,
-      error: "Tidak dapat menyiapkan upload bukti pembayaran."
+      error: "Gagal menyiapkan upload bukti pembayaran."
     });
-  } finally {
-    if (db) {
-      try {
-        db.close();
-      } catch (_) {}
-    }
   }
 };
