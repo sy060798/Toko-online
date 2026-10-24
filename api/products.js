@@ -1,36 +1,141 @@
-const { createClient } = require("@libsql/client");
-function json(res,status,data){res.setHeader("Content-Type","application/json; charset=utf-8");res.setHeader("Cache-Control","no-store");return res.status(status).json(data)}
-const SAMPLE_PRODUCTS = [
-  {name:"Velvet Oud",price:185000,image:"https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80",notes:"Woody · Warm · Elegant",description:"Aroma hangat, dalam, dan elegan dengan inspirasi kayu serta rempah. Cocok untuk malam hari dan acara spesial."},
-  {name:"Rose Élégance",price:155000,image:"https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=80",notes:"Floral · Rose · Soft Musk",description:"Konsep wewangian floral yang lembut dan anggun, dengan inspirasi mawar dan musk yang bersih."},
-  {name:"Citrus No. 09",price:125000,image:"https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=700&q=80",notes:"Citrus · Fresh · Clean",description:"Karakter aroma segar dan cerah yang terinspirasi dari buah sitrus, cocok untuk aktivitas sehari-hari."}
-];
-async function ensureProducts(db) {
-  await db.execute(`CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
-    price INTEGER NOT NULL CHECK(price > 0), image TEXT NOT NULL DEFAULT '',
-    description TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT 'EAU DE PARFUM',
-    category TEXT NOT NULL DEFAULT 'full', is_active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT datetime('now'), updated_at TEXT NOT NULL DEFAULT datetime('now')
-  )`);
-  const cols = await db.execute("PRAGMA table_info(products)");
-  if (!cols.rows.some(c => String(c.name) === "category")) {
-    await db.execute("ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'full'");
-  }
-  for (const p of SAMPLE_PRODUCTS) {
-    await db.execute({sql:`INSERT OR IGNORE INTO products(name,price,image,description,notes,category,is_active) VALUES(?,?,?,?,?,'sample',1)`,args:[p.name,p.price,p.image,p.description,p.notes]});
-    // Sample names stay in the sample collection even if a previous database row existed.
-    await db.execute({sql:"UPDATE products SET category='sample' WHERE name=?",args:[p.name]});
+
+import { createClient } from "@libsql/client";
+
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+let setupPromise;
+
+async function ensureProducts() {
+  if (setupPromise) return setupPromise;
+
+  setupPromise = (async () => {
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price INTEGER NOT NULL DEFAULT 0,
+        image TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        category TEXT NOT NULL DEFAULT 'full',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const columnsResult = await db.execute(
+      "PRAGMA table_info(products)"
+    );
+
+    const existingColumns = new Set(
+      columnsResult.rows.map((column) => String(column.name))
+    );
+
+    const migrations = [
+      ["image", "TEXT DEFAULT ''"],
+      ["description", "TEXT DEFAULT ''"],
+      ["notes", "TEXT DEFAULT ''"],
+      ["category", "TEXT NOT NULL DEFAULT 'full'"],
+      ["is_active", "INTEGER NOT NULL DEFAULT 1"],
+      ["created_at", "TEXT"],
+      ["updated_at", "TEXT"],
+    ];
+
+    for (const [column, definition] of migrations) {
+      if (!existingColumns.has(column)) {
+        await db.execute(
+          `ALTER TABLE products ADD COLUMN ${column} ${definition}`
+        );
+      }
+    }
+
+    await db.execute(`
+      UPDATE products
+      SET created_at = CURRENT_TIMESTAMP
+      WHERE created_at IS NULL OR created_at = ''
+    `);
+
+    await db.execute(`
+      UPDATE products
+      SET updated_at = CURRENT_TIMESTAMP
+      WHERE updated_at IS NULL OR updated_at = ''
+    `);
+  })();
+
+  try {
+    await setupPromise;
+  } catch (error) {
+    setupPromise = null;
+    throw error;
   }
 }
-module.exports = async (req,res) => {
-  if(req.method!=="GET"){res.setHeader("Allow","GET");return json(res,405,{success:false,error:"Gunakan metode GET."})}
-  const {TURSO_DATABASE_URL:url,TURSO_AUTH_TOKEN:authToken}=process.env;
-  if(!url||!authToken)return json(res,500,{success:false,error:"Konfigurasi database belum lengkap."});
-  let db;
-  try{db=createClient({url,authToken});await ensureProducts(db);
-    const result=await db.execute("SELECT id,name,price,image,description,notes,category FROM products WHERE is_active=1 ORDER BY CASE category WHEN 'sample' THEN 0 ELSE 1 END,id ASC");
-    return json(res,200,{success:true,products:result.rows.map(p=>({...p,id:Number(p.id),price:Number(p.price),category:String(p.category||"full")}))});
-  }catch(e){console.error("products:",e);return json(res,500,{success:false,error:"Gagal mengambil katalog produk."})}
-  finally{try{db?.close()}catch(_){}}
-};
+
+export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+    return res.status(405).json({
+      success: false,
+      message: "Method tidak diizinkan.",
+    });
+  }
+
+  try {
+    await ensureProducts();
+
+    const result = await db.execute({
+      sql: `
+        SELECT
+          id,
+          name,
+          price,
+          image,
+          description,
+          notes,
+          category,
+          is_active,
+          created_at,
+          updated_at
+        FROM products
+        WHERE is_active = 1
+        ORDER BY
+          CASE
+            WHEN category = 'sample' THEN 0
+            ELSE 1
+          END,
+          id DESC
+      `,
+      args: [],
+    });
+
+    const products = result.rows.map((row) => ({
+      id: Number(row.id),
+      name: String(row.name ?? ""),
+      price: Number(row.price ?? 0),
+      image: String(row.image ?? ""),
+      description: String(row.description ?? ""),
+      notes: String(row.notes ?? ""),
+      category: String(row.category ?? "full"),
+      is_active: Number(row.is_active ?? 1),
+      created_at: row.created_at ?? null,
+      updated_at: row.updated_at ?? null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.error("products API:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data produk.",
+    });
+  }
+}
