@@ -1,3 +1,4 @@
+
 const { createClient } = require("@libsql/client");
 
 function json(res, status, data) {
@@ -160,12 +161,15 @@ module.exports = async (req, res) => {
 
       const product = cleanProduct(body);
 
+      // Cari berdasarkan ID tanpa membatasi is_active.
+      // Jika produk sebelumnya nonaktif, penyimpanan akan mengaktifkannya lagi.
       const result = await db.execute({
         sql: `
           UPDATE products
           SET name = ?, price = ?, image = ?, description = ?,
-              notes = ?, category = ?, updated_at = CURRENT_TIMESTAMP
-          WHERE id = ? AND is_active = 1
+              notes = ?, category = ?, is_active = 1,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
         `,
         args: [
           product.name,
@@ -181,13 +185,13 @@ module.exports = async (req, res) => {
       if (Number(result.rowsAffected) === 0) {
         return json(res, 404, {
           success: false,
-          error: "Produk tidak ditemukan atau sudah dihapus."
+          error: "ID produk tidak ditemukan di database. Muat ulang daftar produk."
         });
       }
 
       return json(res, 200, {
         success: true,
-        message: "Produk berhasil diperbarui."
+        message: "Produk berhasil diperbarui dan diaktifkan."
       });
     }
 
@@ -201,25 +205,38 @@ module.exports = async (req, res) => {
         });
       }
 
-      const result = await db.execute({
+      // Pastikan ID benar-benar ada.
+      const existing = await db.execute({
+        sql: "SELECT id, is_active FROM products WHERE id = ?",
+        args: [id]
+      });
+
+      if (existing.rows.length === 0) {
+        return json(res, 404, {
+          success: false,
+          error: "ID produk tidak ditemukan di database."
+        });
+      }
+
+      if (Number(existing.rows[0].is_active) === 0) {
+        return json(res, 200, {
+          success: true,
+          message: "Produk memang sudah dihapus dari katalog."
+        });
+      }
+
+      await db.execute({
         sql: `
           UPDATE products
           SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-          WHERE id = ? AND is_active = 1
+          WHERE id = ?
         `,
         args: [id]
       });
 
-      if (Number(result.rowsAffected) === 0) {
-        return json(res, 404, {
-          success: false,
-          error: "Produk tidak ditemukan atau sudah dihapus."
-        });
-      }
-
       return json(res, 200, {
         success: true,
-        message: "Produk berhasil dihapus dari toko."
+        message: "Produk berhasil dihapus dari katalog."
       });
     }
 
