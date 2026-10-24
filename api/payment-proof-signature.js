@@ -11,6 +11,7 @@ function json(res, status, data) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
 
   return res.status(status).json(data);
 }
@@ -39,8 +40,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const body = req.body || {};
-  const orderCode = String(body.order_code || "").trim();
+  const orderCode = String(req.body?.order_code || "").trim();
 
   if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
     return json(res, 400, {
@@ -52,37 +52,44 @@ module.exports = async function handler(req, res) {
   let db;
 
   try {
-    db = createClient({
-      url: databaseUrl,
-      authToken
-    });
+    db = createClient({ url: databaseUrl, authToken });
 
     const result = await db.execute({
-      sql: `SELECT order_code, payment_proof_public_id
+      sql: `SELECT order_code, payment_status, payment_proof_public_id
             FROM orders
             WHERE order_code = ?
             LIMIT 1`,
       args: [orderCode]
     });
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       return json(res, 404, {
         success: false,
         error: "Pesanan tidak ditemukan."
       });
     }
 
-    if (result.rows[0].payment_proof_public_id) {
+    const order = result.rows[0];
+
+    if (order.payment_proof_public_id) {
       return json(res, 409, {
         success: false,
         error: "Bukti pembayaran sudah tersimpan."
       });
     }
 
+    if (order.payment_status !== "awaiting_payment") {
+      return json(res, 409, {
+        success: false,
+        error: "Status pesanan tidak mengizinkan upload bukti."
+      });
+    }
+
     cloudinary.config({
       cloud_name: cloudName,
       api_key: apiKey,
-      api_secret: apiSecret
+      api_secret: apiSecret,
+      secure: true
     });
 
     const timestamp = Math.floor(Date.now() / 1000);
@@ -94,7 +101,7 @@ module.exports = async function handler(req, res) {
       overwrite: false,
       type: "authenticated",
       upload_preset: UPLOAD_PRESET,
-      allowed_formats: ALLOWED_FORMATS,
+      allowed_formats: ALLOWED_FORMATS.join(","),
       max_file_size: MAX_FILE_SIZE
     };
 
@@ -118,7 +125,10 @@ module.exports = async function handler(req, res) {
       signature
     });
   } catch (error) {
-    console.error("Gagal menyiapkan signature upload:", error.message);
+    console.error("Payment signature error:", {
+      message: error.message,
+      code: error.code
+    });
 
     return json(res, 500, {
       success: false,
