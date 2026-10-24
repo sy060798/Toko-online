@@ -175,7 +175,7 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
     <h2>Keranjang belanja</h2>
     <div id="cartItems"></div>
     <div class="total-line"><span>Subtotal parfum</span><strong id="subtotal"></strong></div>
-    <div class="total-line"><span>Jasa kirim</span><strong id="shippingFeeDisplay">Rp0</strong></div>
+    <div class="total-line"><span>Jasa kirim</span><strong>Rp6.000</strong></div>
     <div class="total-line final"><span>Total</span><span id="grandTotal"></span></div>
     <button class="btn" style="width:100%" onclick="startCheckout()">Lanjut ke pemesanan</button>
   </div>
@@ -200,27 +200,7 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
       <label class="field">Alamat lengkap
         <textarea name="address" required placeholder="Jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, kode pos"></textarea>
       </label>
-       <label class="field">Wilayah tujuan
-  <select name="destination" id="destination" required>
-    <option value="">Pilih wilayah tujuan</option>
-    <optgroup label="Gratis ongkir">
-      <option value="jakarta">DKI Jakarta</option>
-      <option value="bogor-kota">Kota Bogor</option>
-      <option value="bogor-kabupaten">Kabupaten Bogor</option>
-      <option value="depok">Kota Depok</option>
-      <option value="tangerang-kota">Kota Tangerang</option>
-      <option value="tangerang-kabupaten">Kabupaten Tangerang</option>
-      <option value="tangerang-selatan">Kota Tangerang Selatan</option>
-      <option value="serang-kota">Kota Serang</option>
-      <option value="serang-kabupaten">Kabupaten Serang</option>
-    </optgroup>
-    <optgroup label="Ongkir Rp6.000">
-      <option value="luar">Luar wilayah gratis ongkir</option>
-    </optgroup>
-  </select>
-  <span class="note">Gratis ongkir berlaku untuk wilayah yang tercantum di atas.</span>
-</label>
-      
+
       <label class="field">Jasa pengiriman
         <select name="shipping" required>
           <option value="Reguler">Reguler — ongkir Rp6.000</option>
@@ -308,27 +288,6 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
 
 const API_BASE = "/api";
 const SHIPPING_FEE = 6000;
-  const FREE_SHIPPING_DESTINATIONS = [
-  "jakarta",
-  "bogor-kota",
-  "bogor-kabupaten",
-  "depok",
-  "tangerang-kota",
-  "tangerang-kabupaten",
-  "tangerang-selatan",
-  "serang-kota",
-  "serang-kabupaten"
-];
-
-function getShippingFee() {
-  const destination = document.getElementById("destination")?.value;
-
-  if (!destination) return SHIPPING_FEE;
-
-  return FREE_SHIPPING_DESTINATIONS.includes(destination)
-    ? 0
-    : SHIPPING_FEE;
-}
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_TYPES = [
@@ -448,15 +407,12 @@ function getSubtotal() {
 }
 
 function getGrandTotal() {
-  return cart.reduce(
-    (sum, p) => sum + p.price * p.quantity,
-    0
-  ) + (cart.length ? getShippingFee() : 0);
+  return getSubtotal() + (cart.length ? SHIPPING_FEE : 0);
 }
 
 function updateCart() {
   document.getElementById("count").textContent =
-    cart.reduce((sum, p) => sum + p.quantity, 0);
+    cart.reduce((s,p) => s + p.quantity, 0);
 
   document.getElementById("cartItems").innerHTML = cart.length
     ? cart.map(p => `
@@ -467,29 +423,17 @@ function updateCart() {
           <button onclick="changeQty(${p.id},-1)">−</button>
           <span>${p.quantity}</span>
           <button onclick="changeQty(${p.id},1)">+</button>
-          <span>${rupiah(p.price * p.quantity)}</span>
+          <span>${rupiah(p.price*p.quantity)}</span>
         </div>
       </div>
     `).join("")
     : "<p>Keranjang masih kosong.</p>";
 
-  document.getElementById("subtotal").textContent =
-    rupiah(getSubtotal());
-
-  document.getElementById("shippingFeeDisplay").textContent =
-    rupiah(cart.length ? getShippingFee() : 0);
-
-  document.getElementById("grandTotal").textContent =
-    rupiah(getGrandTotal());
-
-  document.getElementById("checkoutTotal").textContent =
-    rupiah(getGrandTotal());
+  document.getElementById("subtotal").textContent = rupiah(getSubtotal());
+  document.getElementById("grandTotal").textContent = rupiah(getGrandTotal());
+  document.getElementById("checkoutTotal").textContent = rupiah(getGrandTotal());
 }
- document.getElementById("destination").addEventListener(
-  "change",
-  updateCart
-);
-  
+
 function changeQty(id, delta) {
   const p = cart.find(x => x.id === id);
   if (!p) return;
@@ -599,152 +543,58 @@ function validAdminNumber(number) {
   return /^62\d{8,15}$/.test(number);
 }
 
+function makeOrderId() {
+  const d = new Date();
 
-/* =====================================================
-   ESSENCE — ALUR PEMESANAN TAHAP 1, 2, DAN 3
-   Desain HTML dan CSS tetap dipertahankan.
-   ===================================================== */
+  const date = [
+    d.getFullYear(),
+    String(d.getMonth()+1).padStart(2,"0"),
+    String(d.getDate()).padStart(2,"0")
+  ].join("");
 
-let currentOrder = null;
-let orderSubmitting = false;
-let proofUploading = false;
+  return "ESS-" + date + "-" +
+    Math.random().toString(36).slice(2,8).toUpperCase();
+}
 
-/* FORMAT PESAN WHATSAPP */
 function buildOrderMessage(order) {
-  const items = order.items.map(item =>
-    `- ${item.name} x${item.quantity}: ${rupiah(
-      item.price * item.quantity
-    )}`
+  const items = order.items.map(p =>
+    `- ${p.name} x${p.quantity}: ${rupiah(p.price*p.quantity)}`
   );
 
   return [
-    "*PESANAN ESSENCE PERFUME ATELIER*",
+    "*PESANAN BARU — ESSENCE PERFUME ATELIER*",
     "",
-    `Kode pesanan: ${order.id}`,
+    `Nomor pesanan: ${order.id}`,
     `Nama: ${order.name}`,
     `WhatsApp pelanggan: ${order.phone}`,
     `Alamat: ${order.address}`,
-    `Pengiriman: ${order.shipping}`,
     "",
-    "*Rincian parfum:*",
+    "*Detail produk:*",
     ...items,
     "",
     `Subtotal parfum: ${rupiah(order.subtotal)}`,
-    `Ongkir: ${rupiah(order.shippingFee)}`,
-    `*TOTAL PEMBAYARAN: ${rupiah(order.total)}*`,
+    `Ongkir: ${rupiah(SHIPPING_FEE)}`,
+    `*TOTAL TRANSFER: ${rupiah(order.total)}*`,
     "",
+    "*Rekening tujuan:*",
     `Bank: ${CONFIG.bankName}`,
     `Nomor rekening: ${CONFIG.bankAccount}`,
     `Atas nama: ${CONFIG.bankOwner}`,
     "",
-    `Bukti transfer: ${order.proofUrl || order.fileName}`,
+    `Nama file bukti transfer: ${order.fileName}`,
     "",
-    order.proofUrl
-      ? "Bukti transfer sudah diunggah. Silakan periksa tautan bukti di atas."
-      : "Bukti transfer sudah dipilih. Jika lampiran tidak tersedia di chat, lampirkan file secara manual.",
-    "",
-    "Mohon periksa dan konfirmasi pesanan saya."
+    "Bukti transfer akan saya lampirkan pada chat ini.",
+    "Mohon konfirmasi pesanan dan pembayaran saya."
   ].join("\n");
 }
 
-/* =====================================================
-   ESSENCE — CHECKOUT, SALIN KODE, UPLOAD BUKTI
-   ===================================================== */
+/* SUBMIT CHECKOUT DAN BUKA WHATSAPP */
 
-let currentOrder = null;
-let orderSubmitting = false;
-let proofUploading = false;
-
-/* =====================================================
-   FORMAT PESAN WHATSAPP
-   ===================================================== */
-
-function buildOrderMessage(order) {
-  const items = order.items.map(item =>
-    `- ${item.name} x${item.quantity}: ${rupiah(
-      item.price * item.quantity
-    )}`
-  );
-
-  return [
-    "*PESANAN ESSENCE PERFUME ATELIER*",
-    "",
-    `Kode pesanan: ${order.id}`,
-    `Nama: ${order.name}`,
-    `WhatsApp pelanggan: ${order.phone}`,
-    `Alamat: ${order.address}`,
-    `Wilayah tujuan: ${order.destination}`,
-    `Pengiriman: ${order.shipping}`,
-    "",
-    "*Rincian parfum:*",
-    ...items,
-    "",
-    `Subtotal parfum: ${rupiah(order.subtotal)}`,
-    `Ongkir: ${rupiah(order.shippingFee)}`,
-    `*TOTAL PEMBAYARAN: ${rupiah(order.total)}*`,
-    "",
-    `Bank: ${CONFIG.bankName}`,
-    `Nomor rekening: ${CONFIG.bankAccount}`,
-    `Atas nama: ${CONFIG.bankOwner}`,
-    "",
-    `Bukti transfer: ${
-      order.proofUrl || order.fileName || "Belum tersedia"
-    }`,
-    "",
-    "Mohon periksa dan konfirmasi pesanan saya."
-  ].join("\n");
-}
-
-/* =====================================================
-   FUNGSI SALIN KODE PESANAN
-   ===================================================== */
-
-async function copyOrderCode(button) {
-  if (!currentOrder?.id) {
-    alert("Kode pesanan belum tersedia.");
-    return;
-  }
-
-  const originalText = button.textContent;
-
-  try {
-    if (!navigator.clipboard || !window.isSecureContext) {
-      throw new Error("Clipboard tidak tersedia.");
-    }
-
-    await navigator.clipboard.writeText(currentOrder.id);
-    button.textContent = "Kode berhasil disalin!";
-  } catch {
-    window.prompt(
-      "Salin kode pesanan berikut:",
-      currentOrder.id
-    );
-  }
-
-  if (button.isConnected) {
-    setTimeout(() => {
-      button.textContent = originalText;
-    }, 2000);
-  }
-}
-
-document.getElementById("copyOrderCode").addEventListener(
-  "click",
-  function () {
-    copyOrderCode(this);
-  }
-);
-
-/* =====================================================
-   TAHAP 1 DAN 2 — BUAT PESANAN
-   ===================================================== */
-
+/* SIMPAN PESANAN KE TURSO, LALU BUKA WHATSAPP */
 document.getElementById("checkoutForm").addEventListener(
   "submit",
-  async function (event) {
+  async event => {
     event.preventDefault();
-
-    if (orderSubmitting) return;
 
     if (!cart.length) {
       alert("Keranjang masih kosong.");
@@ -752,43 +602,66 @@ document.getElementById("checkoutForm").addEventListener(
     }
 
     if (!validAdminNumber(CONFIG.adminWhatsApp)) {
-      alert("Periksa nomor WhatsApp admin.");
+      alert("Periksa nomor WhatsApp admin pada konfigurasi.");
       return;
     }
 
     if (!bankIsConfigured()) {
-      alert("Periksa informasi rekening toko.");
+      alert("Lengkapi informasi rekening toko terlebih dahulu.");
       return;
     }
 
     const form = event.currentTarget;
+    const file = document.getElementById("paymentProof").files[0];
     const result = document.getElementById("orderResult");
-    const button = document.getElementById("submitOrder");
+    const submitButton = document.getElementById("submitOrder");
 
-    const name = form.elements["name"].value.trim();
-    const phone = form.elements["phone"].value.trim();
-    const address = form.elements["address"].value.trim();
-    const destination = form.elements["destination"].value;
-    const shipping = form.elements["shipping"].value;
-
-    if (!name || !phone || !address || !destination || !shipping) {
-      alert("Lengkapi semua detail pemesanan.");
+    if (!file) {
+      alert("Silakan upload bukti transfer terlebih dahulu.");
       return;
     }
 
-    const items = cart.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: Number(item.price),
-      quantity: Number(item.quantity)
-    }));
+    if (!ALLOWED_TYPES.includes(file.type) ||
+        file.size > MAX_FILE_SIZE) {
+      alert("Format atau ukuran bukti transfer tidak valid.");
+      return;
+    }
 
-    orderSubmitting = true;
-    button.disabled = true;
-    button.textContent = "Menyimpan pesanan...";
+    if (!document.getElementById("paymentConfirmation").checked) {
+      alert("Centang konfirmasi bahwa kamu sudah melakukan transfer.");
+      return;
+    }
 
+    const formData = new FormData(form);
+
+    const name = String(formData.get("name") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const address = String(formData.get("address") || "").trim();
+
+    if (!name || !phone || !address) {
+      alert("Lengkapi nama, nomor WhatsApp, dan alamat.");
+      return;
+    }
+
+    // Buka tab kosong langsung dari tindakan pengguna agar
+    // browser tidak memblokir pembukaan WhatsApp setelah fetch.
+    const whatsappWindow = window.open("about:blank", "_blank");
+
+    if (!whatsappWindow) {
+      result.className = "order-result error";
+      result.textContent =
+        "Popup diblokir. Izinkan popup browser lalu coba lagi.";
+      return;
+    }
+
+    whatsappWindow.opener = null;
+    whatsappWindow.document.title = "Memproses pesanan ESSENCE";
+
+    const oldButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = "Menyimpan pesanan...";
     result.className = "order-result";
-    result.textContent = "Sedang menyimpan pesanan...";
+    result.textContent = "Sedang menyimpan pesanan ke database...";
 
     try {
       const response = await fetch(`${API_BASE}/orders`, {
@@ -797,14 +670,10 @@ document.getElementById("checkoutForm").addEventListener(
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          name,
           whatsapp: phone,
-          address,
-          destination,
-          shipping,
-          items: items.map(item => ({
-            id: item.id,
-            quantity: item.quantity
+          items: cart.map(p => ({
+            name: p.name,
+            quantity: p.quantity
           }))
         })
       });
@@ -813,265 +682,90 @@ document.getElementById("checkoutForm").addEventListener(
 
       if (!response.ok || !data.success) {
         throw new Error(
-          data.error || "Pesanan gagal disimpan."
+          data.error || "Pesanan gagal disimpan ke database."
         );
       }
 
-      if (!data.order_code) {
-        throw new Error(
-          "Server tidak mengembalikan kode pesanan."
-        );
-      }
-
-      const total = Number(data.total_price);
-
-      if (!Number.isFinite(total) || total <= 0) {
-        throw new Error("Total pembayaran dari server tidak valid.");
-      }
-
-      const subtotal = items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
-
-      currentOrder = {
-        id: String(data.order_code),
+      // Gunakan kode dan total yang dikembalikan backend.
+      const order = {
+        id: data.order_code,
         name,
         phone,
         address,
-        destination,
-        shipping,
-        items,
-        subtotal,
-        shippingFee: Math.max(0, total - subtotal),
-        total,
-        fileName: "",
-        proofUrl: ""
+        items: cart.map(p => ({ ...p })),
+        subtotal: getSubtotal(),
+        total: data.total_price,
+        fileName: file.name
       };
 
-      document.getElementById("proofOrderCode").textContent =
-        currentOrder.id;
-
-      document.getElementById("checkoutTotal").textContent =
-        rupiah(total);
-
-      document.getElementById("paymentProofSection").hidden = false;
-
-      // Sembunyikan form setelah server berhasil membuat pesanan.
-      form.style.display = "none";
-
-      result.className = "order-result success";
-      result.replaceChildren();
-
-      const heading = document.createElement("h3");
-      heading.textContent = "Pesanan berhasil dibuat!";
-
-      const description = document.createElement("p");
-      description.textContent =
-        "Simpan kode pesanan, transfer sesuai total pembayaran, lalu unggah bukti transfer.";
-
-      const code = document.createElement("strong");
-      code.id = "generatedOrderCode";
-      code.textContent = currentOrder.id;
-
-      const totalText = document.createElement("p");
-      totalText.textContent =
-        "Total pembayaran: " + rupiah(total);
-
-      const copyButton = document.createElement("button");
-      copyButton.type = "button";
-      copyButton.className = "btn light";
-      copyButton.textContent = "Salin kode pesanan";
-      copyButton.addEventListener("click", function () {
-        copyOrderCode(this);
-      });
-
-      result.append(
-        heading,
-        description,
-        code,
-        totalText,
-        copyButton
-      );
-
-    } catch (error) {
-      result.className = "order-result error";
-      result.textContent =
-        error.message || "Gagal membuat pesanan.";
-
-    } finally {
-      orderSubmitting = false;
-      button.disabled = false;
-      button.textContent = "Buat pesanan";
-    }
-  }
-);
-
-/* =====================================================
-   TAHAP 3 — UPLOAD BUKTI DAN KIRIM KE WHATSAPP
-   ===================================================== */
-
-document.getElementById("sendProof").addEventListener(
-  "click",
-  async function () {
-    if (proofUploading) return;
-
-    const result = document.getElementById("orderResult");
-    const button = document.getElementById("sendProof");
-    const fileInput = document.getElementById("paymentProof");
-    const file = fileInput.files[0];
-
-    if (!currentOrder) {
-      alert("Buat pesanan terlebih dahulu.");
-      return;
-    }
-
-    if (!file) {
-      alert("Pilih bukti transfer terlebih dahulu.");
-      return;
-    }
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      alert("Format harus JPG, PNG, WEBP, atau PDF.");
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      alert("Ukuran bukti transfer maksimal 5 MB.");
-      return;
-    }
-
-    if (!validAdminNumber(CONFIG.adminWhatsApp)) {
-      alert("Periksa nomor WhatsApp admin.");
-      return;
-    }
-
-    proofUploading = true;
-    button.disabled = true;
-    button.textContent = "Mengunggah bukti...";
-
-    result.className = "order-result";
-    result.textContent = "Sedang mengunggah bukti pembayaran...";
-
-    try {
-      const formData = new FormData();
-      formData.append("order_code", currentOrder.id);
-      formData.append("paymentProof", file);
-
-      const response = await fetch(
-        `${API_BASE}/payment-proof-save`,
-        {
-          method: "POST",
-          body: formData
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.error || "Upload bukti transfer gagal."
-        );
-      }
-
-      currentOrder.fileName = file.name;
-      currentOrder.proofUrl =
-        typeof data.proof_url === "string"
-          ? data.proof_url
-          : "";
-
+      const message = buildOrderMessage(order);
       const whatsappUrl =
-        "https://wa.me/" +
-        CONFIG.adminWhatsApp +
-        "?text=" +
-        encodeURIComponent(buildOrderMessage(currentOrder));
+        "https://wa.me/" + CONFIG.adminWhatsApp +
+        "?text=" + encodeURIComponent(message);
 
       result.className = "order-result success";
-      result.replaceChildren();
 
-      const heading = document.createElement("h3");
-      heading.textContent = "Bukti transfer berhasil diunggah!";
+      const title = document.createElement("strong");
+      title.textContent = "Pesanan berhasil disimpan!";
 
-      const description = document.createElement("p");
-      description.textContent =
-        "Kode pesanan dan bukti pembayaran berhasil diproses. Tekan tombol di bawah untuk mengirim rincian kepada admin.";
-
-      const codeBox = document.createElement("div");
-      codeBox.className = "proof-preview";
-
-      const codeLabel = document.createElement("p");
-      codeLabel.textContent = "KODE PESANAN KAMU";
-
-      const codeValue = document.createElement("strong");
-      codeValue.textContent = currentOrder.id;
-      codeValue.style.display = "block";
-      codeValue.style.fontSize = "22px";
-      codeValue.style.overflowWrap = "anywhere";
-      codeValue.style.marginBottom = "12px";
+      const details = document.createElement("p");
+      details.textContent =
+        "Kode pesanan: " + order.id +
+        ". Total: " + rupiah(order.total) +
+        ". WhatsApp akan dibuka untuk mengirim rincian pesanan.";
 
       const copyButton = document.createElement("button");
       copyButton.type = "button";
       copyButton.className = "btn light";
       copyButton.style.width = "100%";
-      copyButton.textContent = "Salin kode pesanan";
-      copyButton.addEventListener("click", function () {
-        copyOrderCode(this);
+      copyButton.textContent = "Salin rincian pesanan";
+
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(message);
+          copyButton.textContent = "Rincian berhasil disalin";
+        } catch {
+          alert("Gagal menyalin otomatis. Salin pesan dari WhatsApp.");
+        }
       });
 
-      codeBox.append(codeLabel, codeValue, copyButton);
+      const reopenButton = document.createElement("button");
+      reopenButton.type = "button";
+      reopenButton.className = "btn whatsapp";
+      reopenButton.style.width = "100%";
+      reopenButton.style.marginTop = "8px";
+      reopenButton.textContent = "Buka WhatsApp lagi";
 
-      const totalText = document.createElement("p");
-      totalText.textContent =
-        "Total pembayaran: " + rupiah(currentOrder.total);
-
-      const whatsappButton = document.createElement("button");
-      whatsappButton.type = "button";
-      whatsappButton.className = "btn whatsapp";
-      whatsappButton.style.width = "100%";
-      whatsappButton.style.marginTop = "12px";
-      whatsappButton.textContent = "Kirim detail ke WhatsApp admin";
-
-      whatsappButton.addEventListener("click", function () {
-        window.open(whatsappUrl, "_blank", "noopener");
+      reopenButton.addEventListener("click", () => {
+        window.open(whatsappUrl, "_blank");
       });
 
-      result.append(
-        heading,
-        description,
-        codeBox,
-        totalText,
-        whatsappButton
-      );
+      result.replaceChildren(title, details, copyButton, reopenButton);
 
-      button.textContent = "Bukti berhasil diunggah";
+      // Arahkan tab yang sudah dibuka ke WhatsApp.
+      whatsappWindow.location.href = whatsappUrl;
 
     } catch (error) {
+      // Jangan mengarahkan pelanggan ke WhatsApp seolah-olah
+      // pesanan tersimpan apabila API mengembalikan kegagalan.
+      try {
+        whatsappWindow.close();
+      } catch (_) {}
+
       result.className = "order-result error";
       result.textContent =
         error.message ||
-        "Upload gagal. Periksa koneksi dan coba lagi.";
-
-      button.textContent = "Coba upload lagi";
-
+        "Gagal menyimpan pesanan. Periksa koneksi dan coba lagi.";
     } finally {
-      proofUploading = false;
-      button.disabled = false;
-
-      if (button.textContent === "Mengunggah bukti...") {
-        button.textContent = "Upload bukti & kirim ke WhatsApp";
-      }
+      submitButton.disabled = false;
+      submitButton.textContent = oldButtonText;
     }
   }
 );
 
-/* =====================================================
-   INISIALISASI TOKO
-   ===================================================== */
 
 renderProducts();
 updateCart();
-
-  
 </script>
 </body>
 </html>
