@@ -277,12 +277,20 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
 </div>
 
 <!-- JAVASCRIPT DILANJUTKAN DI BAWAH -->
+
 <script>
 "use strict";
+
 const API_BASE = "/api";
 const SHIPPING_FEE = 6000;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+// Samakan dengan API Cloudinary yang sudah diperbarui.
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp"
+];
 
 const CONFIG = {
   adminWhatsApp: "628567362911",
@@ -293,22 +301,28 @@ const CONFIG = {
 
 const demoProducts = [
   {
-    id:1, name:"Velvet Oud", price:185000,
-    image:"https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80",
-    description:`Velvet Oud menghadirkan karakter aroma hangat, dalam, dan elegan bagi pencinta wewangian yang berkesan. Bayangkan perpaduan nuansa kayu yang lembut dengan sentuhan rempah yang memberikan kesan dewasa dan berkarakter. Pada semprotan awal, aroma terasa tegas dan memikat. Seiring waktu, wanginya berkembang menjadi lebih lembut dan nyaman, menciptakan pengalaman parfum yang terasa personal. Karakter seperti ini cocok untuk malam hari, acara spesial, makan malam, maupun saat kamu ingin tampil lebih percaya diri. Padukan dengan pakaian formal atau gaya minimalis untuk kesan yang rapi dan mewah. Untuk hasil terbaik, semprotkan secukupnya pada titik nadi seperti pergelangan tangan dan leher. Hindari menggosok kulit setelah menyemprotkan parfum agar perkembangan aromanya tidak terganggu. Deskripsi ini merupakan konsep aroma; sesuaikan notes dengan komposisi parfum asli sebelum dipublikasikan.`,
-    notes:"Woody · Warm · Elegant"
+    id: 1,
+    name: "Velvet Oud",
+    price: 185000,
+    image: "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80",
+    description: `Velvet Oud menghadirkan karakter aroma hangat, dalam, dan elegan bagi pencinta wewangian yang berkesan. Bayangkan perpaduan nuansa kayu yang lembut dengan sentuhan rempah yang memberikan kesan dewasa dan berkarakter. Pada semprotan awal, aroma terasa tegas dan memikat. Seiring waktu, wanginya berkembang menjadi lebih lembut dan nyaman, menciptakan pengalaman parfum yang terasa personal. Karakter seperti ini cocok untuk malam hari, acara spesial, makan malam, maupun saat kamu ingin tampil lebih percaya diri. Padukan dengan pakaian formal atau gaya minimalis untuk kesan yang rapi dan mewah. Untuk hasil terbaik, semprotkan secukupnya pada titik nadi seperti pergelangan tangan dan leher. Hindari menggosok kulit setelah menyemprotkan parfum agar perkembangan aromanya tidak terganggu. Deskripsi ini merupakan konsep aroma; sesuaikan notes dengan komposisi parfum asli sebelum dipublikasikan.`,
+    notes: "Woody · Warm · Elegant"
   },
   {
-    id:2, name:"Rose Élégance", price:155000,
-    image:"https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=80",
-    description:`Rose Élégance merupakan konsep wewangian floral yang lembut, anggun, dan romantis. Nuansa bunga mawar memberikan kesan klasik, sementara sentuhan musk dapat menciptakan karakter yang terasa bersih dan dekat dengan kulit. Aromanya cocok bagi kamu yang menyukai wewangian feminin tanpa kesan terlalu mencolok. Gunakan saat bekerja, menghadiri acara santai, atau menikmati waktu bersama orang terdekat. Untuk suasana siang hari, cukup gunakan beberapa semprotan agar aroma terasa ringan. Saat malam, parfum floral dapat memberikan kesan yang lebih istimewa jika dipadukan dengan busana elegan. Simpan botol di tempat sejuk dan terhindar dari sinar matahari langsung untuk membantu menjaga kualitasnya. Ini adalah deskripsi contoh, bukan klaim komposisi resmi dari produk tertentu.`,
-    notes:"Floral · Rose · Soft Musk"
+    id: 2,
+    name: "Rose Élégance",
+    price: 155000,
+    image: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=80",
+    description: `Rose Élégance merupakan konsep wewangian floral yang lembut, anggun, dan romantis. Nuansa bunga mawar memberikan kesan klasik, sementara sentuhan musk dapat menciptakan karakter yang terasa bersih dan dekat dengan kulit. Aromanya cocok bagi kamu yang menyukai wewangian feminin tanpa kesan terlalu mencolok. Gunakan saat bekerja, menghadiri acara santai, atau menikmati waktu bersama orang terdekat. Untuk suasana siang hari, cukup gunakan beberapa semprotan agar aroma terasa ringan. Saat malam, parfum floral dapat memberikan kesan yang lebih istimewa jika dipadukan dengan busana elegan. Simpan botol di tempat sejuk dan terhindar dari sinar matahari langsung untuk membantu menjaga kualitasnya. Ini adalah deskripsi contoh, bukan klaim komposisi resmi dari produk tertentu.`,
+    notes: "Floral · Rose · Soft Musk"
   },
   {
-    id:3, name:"Citrus No. 09", price:125000,
-    image:"https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=700&q=80",
-    description:`Citrus No. 09 menggambarkan kesegaran yang cerah, bersih, dan energik. Inspirasi aroma jeruk dan buah sitrus memberikan kesan pembuka yang segar, cocok untuk memulai hari dengan suasana positif. Karakter citrus sering disukai oleh orang yang mencari parfum ringan untuk aktivitas sehari-hari. Wewangian ini dapat menemani perjalanan, kegiatan kampus, pekerjaan, atau pertemuan kasual. Setelah aroma awal memudar, karakter lembut yang bersih dapat membuat pengalaman wanginya terasa nyaman. Jika kamu aktif sepanjang hari, bawalah parfum dalam ukuran perjalanan apabila tersedia dan gunakan kembali sesuai kebutuhan. Intensitas dan ketahanan sebenarnya bergantung pada formula, konsentrasi, kondisi kulit, dan lingkungan. Deskripsi ini merupakan contoh pemasaran dan perlu disesuaikan dengan aroma produk yang benar-benar dijual.`,
-    notes:"Citrus · Fresh · Clean"
+    id: 3,
+    name: "Citrus No. 09",
+    price: 125000,
+    image: "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=700&q=80",
+    description: `Citrus No. 09 menggambarkan kesegaran yang cerah, bersih, dan energik. Inspirasi aroma jeruk dan buah sitrus memberikan kesan pembuka yang segar, cocok untuk memulai hari dengan suasana positif. Karakter citrus sering disukai oleh orang yang mencari parfum ringan untuk aktivitas sehari-hari. Wewangian ini dapat menemani perjalanan, kegiatan kampus, pekerjaan, atau pertemuan kasual. Setelah aroma awal memudar, karakter lembut yang bersih dapat membuat pengalaman wanginya terasa nyaman. Jika kamu aktif sepanjang hari, bawalah parfum dalam ukuran perjalanan apabila tersedia dan gunakan kembali sesuai kebutuhan. Intensitas dan ketahanan sebenarnya bergantung pada formula, konsentrasi, kondisi kulit, dan lingkungan. Deskripsi ini merupakan contoh pemasaran dan perlu disesuaikan dengan aroma produk yang benar-benar dijual.`,
+    notes: "Citrus · Fresh · Clean"
   }
 ];
 
@@ -320,62 +334,112 @@ let currentOrder = null;
 let validatedUploadConfig = null;
 
 const $ = id => document.getElementById(id);
+
 const rupiah = n => new Intl.NumberFormat("id-ID", {
-  style:"currency", currency:"IDR", maximumFractionDigits:0
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0
 }).format(Number(n) || 0);
 
 function safe(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   })[c]);
 }
 
 function shippingForCity(city) {
-  const free = ["Jakarta","Bogor","Depok","Tangerang","Bekasi"];
-  if (free.includes(city)) return 0;
-  return city ? SHIPPING_FEE : 0;
+  const normalized = String(city || "").trim().toLowerCase();
+  if (!normalized) return 0;
+
+  const freeCities = [
+    "jakarta",
+    "bogor",
+    "depok",
+    "tangerang",
+    "bekasi"
+  ];
+
+  const isFree = freeCities.some(c =>
+    normalized === c ||
+    normalized.startsWith(c + " ") ||
+    normalized.startsWith(c + ",")
+  );
+
+  return isFree ? 0 : SHIPPING_FEE;
 }
 
 function renderProducts() {
   const q = $("search").value.toLowerCase();
-  $("products").innerHTML = products.filter(p => p.name.toLowerCase().includes(q)).map(p => `
-    <article class="card">
-      <img class="photo" src="${safe(p.image)}" alt="${safe(p.name)}" loading="lazy">
-      <div class="tag">${safe(p.notes || "EAU DE PARFUM")}</div>
-      <h3>${safe(p.name)}</h3>
-      <div class="price">${rupiah(p.price)}</div>
-      <div class="card-actions">
-        <button class="btn light" onclick="showDetail(${Number(p.id)})">Detail</button>
-        <button class="btn" onclick="addCart(${Number(p.id)})">+ Keranjang</button>
-      </div>
-    </article>
-  `).join("");
+
+  $("products").innerHTML = products
+    .filter(p => p.name.toLowerCase().includes(q))
+    .map(p => `
+      <article class="card">
+        <img class="photo"
+          src="${safe(p.image)}"
+          alt="${safe(p.name)}"
+          loading="lazy">
+        <div class="tag">${safe(p.notes || "EAU DE PARFUM")}</div>
+        <h3>${safe(p.name)}</h3>
+        <div class="price">${rupiah(p.price)}</div>
+        <div class="card-actions">
+          <button class="btn light"
+            onclick="showDetail(${Number(p.id)})">Detail</button>
+          <button class="btn"
+            onclick="addCart(${Number(p.id)})">+ Keranjang</button>
+        </div>
+      </article>
+    `).join("");
 }
 
 function showDetail(id) {
-  selectedProduct = products.find(p => Number(p.id) === Number(id));
+  selectedProduct = products.find(
+    p => Number(p.id) === Number(id)
+  );
+
   if (!selectedProduct) return;
+
   $("detailName").textContent = selectedProduct.name;
   $("detailPrice").textContent = rupiah(selectedProduct.price);
   $("detailDescription").textContent = selectedProduct.description;
+
   $("detailAdd").onclick = () => {
     addCart(selectedProduct.id);
     closeModal("detailModal");
   };
+
   openModal("detailModal");
 }
 
 function addCart(id) {
   const p = products.find(x => Number(x.id) === Number(id));
   if (!p) return;
+
   const existing = cart.find(x => Number(x.id) === Number(id));
-  if (existing) existing.quantity++;
-  else cart.push({id:p.id, name:p.name, price:Number(p.price), quantity:1});
+
+  if (existing) {
+    existing.quantity++;
+  } else {
+    cart.push({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price),
+      quantity: 1
+    });
+  }
+
   updateCart();
 }
 
 function getSubtotal() {
-  return cart.reduce((sum,p) => sum + Number(p.price) * p.quantity, 0);
+  return cart.reduce(
+    (sum, p) => sum + Number(p.price) * p.quantity,
+    0
+  );
 }
 
 function getGrandTotal() {
@@ -383,37 +447,63 @@ function getGrandTotal() {
 }
 
 function updateCart() {
-  $("count").textContent = cart.reduce((s,p) => s + p.quantity, 0);
-  $("cartItems").innerHTML = cart.length ? cart.map(p => `
-    <div class="cart-row">
-      <strong>${safe(p.name)}</strong>
-      ${rupiah(p.price)} per botol
-      <div class="qty">
-        <button onclick="changeQty(${Number(p.id)},-1)">−</button>
-        <span>${p.quantity}</span>
-        <button onclick="changeQty(${Number(p.id)},1)">+</button>
-        <span>${rupiah(p.price*p.quantity)}</span>
-      </div>
-    </div>
-  `).join("") : "<p>Keranjang masih kosong.</p>";
+  $("count").textContent = cart.reduce(
+    (s, p) => s + p.quantity,
+    0
+  );
+
+  $("cartItems").innerHTML = cart.length
+    ? cart.map(p => `
+        <div class="cart-row">
+          <strong>${safe(p.name)}</strong>
+          ${rupiah(p.price)} per botol
+          <div class="qty">
+            <button onclick="changeQty(${Number(p.id)},-1)">−</button>
+            <span>${p.quantity}</span>
+            <button onclick="changeQty(${Number(p.id)},1)">+</button>
+            <span>${rupiah(p.price * p.quantity)}</span>
+          </div>
+        </div>
+      `).join("")
+    : "<p>Keranjang masih kosong.</p>";
+
   $("subtotal").textContent = rupiah(getSubtotal());
+
   const fee = shippingForCity($("city")?.value || "");
-  $("grandTotal").textContent = rupiah(getSubtotal() + fee);
-  $("checkoutTotal").textContent = rupiah(getSubtotal() + fee);
-  const cartShipping = document.querySelector("#cartModal .total-line:nth-of-type(2) strong");
-  if (cartShipping) cartShipping.textContent = rupiah(fee);
+  const total = getSubtotal() + fee;
+
+  $("grandTotal").textContent = rupiah(total);
+  $("checkoutTotal").textContent = rupiah(total);
+
+  const cartShipping = document.querySelector(
+    "#cartModal .total-line:nth-of-type(2) strong"
+  );
+
+  if (cartShipping) {
+    cartShipping.textContent = rupiah(fee);
+  }
 }
 
 function changeQty(id, delta) {
   const p = cart.find(x => Number(x.id) === Number(id));
   if (!p) return;
+
   p.quantity += delta;
-  if (p.quantity <= 0) cart = cart.filter(x => Number(x.id) !== Number(id));
+
+  if (p.quantity <= 0) {
+    cart = cart.filter(x => Number(x.id) !== Number(id));
+  }
+
   updateCart();
 }
 
-function openModal(id) { $(id).classList.add("show"); }
-function closeModal(id) { $(id).classList.remove("show"); }
+function openModal(id) {
+  $(id).classList.add("show");
+}
+
+function closeModal(id) {
+  $(id).classList.remove("show");
+}
 
 function openCart() {
   updateCart();
@@ -423,12 +513,21 @@ function openCart() {
 function resetPaymentFlow() {
   currentOrder = null;
   validatedUploadConfig = null;
+
   $("paymentProofSection").hidden = true;
   $("proofUploadArea").hidden = true;
   $("validateOrderCode").value = "";
   $("validationResult").textContent = "";
   $("proofPreview").replaceChildren();
   $("paymentProof").value = "";
+
+  $("sendProof").disabled = false;
+  $("sendProof").textContent = "Kirim bukti pembayaran";
+
+  if (proofPreviewUrl) {
+    URL.revokeObjectURL(proofPreviewUrl);
+    proofPreviewUrl = null;
+  }
 }
 
 function startCheckout() {
@@ -436,12 +535,15 @@ function startCheckout() {
     alert("Keranjang masih kosong.");
     return;
   }
+
   resetPaymentFlow();
   closeModal("cartModal");
   updateCart();
+
   $("bankName").textContent = CONFIG.bankName;
   $("bankAccount").textContent = CONFIG.bankAccount;
   $("bankOwner").textContent = CONFIG.bankOwner;
+
   openModal("checkoutModal");
 }
 
@@ -460,18 +562,23 @@ function validAdminNumber(number) {
 
 async function apiPost(path, payload) {
   const response = await fetch(`${API_BASE}/${path}`, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   });
+
   const data = await response.json().catch(() => ({}));
+
   if (!response.ok || !data.success) {
     throw new Error(data.error || "Permintaan ke server gagal.");
   }
+
   return data;
 }
 
-function showResult(message, kind="") {
+function showResult(message, kind = "") {
   const el = $("orderResult");
   el.className = "order-result" + (kind ? " " + kind : "");
   el.textContent = message;
@@ -479,40 +586,61 @@ function showResult(message, kind="") {
 
 $("checkoutForm").addEventListener("submit", async event => {
   event.preventDefault();
-  if (!cart.length) return alert("Keranjang masih kosong.");
-  if (!validAdminNumber(CONFIG.adminWhatsApp)) return alert("Periksa nomor WhatsApp admin.");
+
+  if (!cart.length) {
+    alert("Keranjang masih kosong.");
+    return;
+  }
+
+  if (!validAdminNumber(CONFIG.adminWhatsApp)) {
+    alert("Periksa nomor WhatsApp admin.");
+    return;
+  }
+
   const formData = new FormData(event.currentTarget);
+
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   const address = String(formData.get("address") || "").trim();
   const city = String(formData.get("city") || "").trim();
+
   if (!name || !phone || !address || !city) {
-    return alert("Lengkapi nama, WhatsApp, alamat, dan kota/kabupaten.");
+    alert("Lengkapi nama, WhatsApp, alamat, dan kota/kabupaten.");
+    return;
   }
 
   const button = $("submitOrder");
   const oldText = button.textContent;
+
   button.disabled = true;
   button.textContent = "Menyimpan pesanan...";
   showResult("Sedang menyimpan pesanan ke database...");
 
   try {
     const data = await apiPost("orders", {
-      name, whatsapp:phone, address, city,
-      items:cart.map(p => ({name:p.name, quantity:p.quantity}))
+      name,
+      whatsapp: phone,
+      address,
+      city,
+      items: cart.map(p => ({
+        name: p.name,
+        quantity: p.quantity
+      }))
     });
 
     currentOrder = {
-      id:data.order_code,
-      name:data.name || name,
-      phone:data.whatsapp || phone,
-      address:data.address || address,
-      city:data.city || city,
-      items:Array.isArray(data.items) ? data.items : cart.map(p => ({...p})),
-      subtotal:Number(data.subtotal),
-      shippingFee:Number(data.shipping_fee),
-      total:Number(data.total_price),
-      paymentStatus:data.payment_status || "awaiting_payment"
+      id: data.order_code,
+      name: data.name || name,
+      phone: data.whatsapp || phone,
+      address: data.address || address,
+      city: data.city || city,
+      items: Array.isArray(data.items)
+        ? data.items
+        : cart.map(p => ({ ...p })),
+      subtotal: Number(data.subtotal),
+      shippingFee: Number(data.shipping_fee),
+      total: Number(data.total_price),
+      paymentStatus: data.payment_status || "awaiting_payment"
     };
 
     $("proofOrderCode").textContent = currentOrder.id;
@@ -520,8 +648,16 @@ $("checkoutForm").addEventListener("submit", async event => {
     $("paymentProofSection").hidden = false;
     $("proofUploadArea").hidden = true;
     $("validationResult").textContent = "";
-    showResult(`Pesanan berhasil dibuat. Kode: ${currentOrder.id}. Total transfer: ${rupiah(currentOrder.total)}. Salin kode, lalu validasi di bagian Konfirmasi pembayaran.`, "success");
-    $("paymentProofSection").scrollIntoView({behavior:"smooth", block:"start"});
+
+    showResult(
+      `Pesanan berhasil dibuat. Kode: ${currentOrder.id}. Total transfer: ${rupiah(currentOrder.total)}. Salin kode, lalu validasi di bagian Konfirmasi pembayaran.`,
+      "success"
+    );
+
+    $("paymentProofSection").scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   } catch (error) {
     showResult(error.message || "Pesanan gagal dibuat. Coba lagi.", "error");
   } finally {
@@ -532,19 +668,25 @@ $("checkoutForm").addEventListener("submit", async event => {
 
 $("copyOrderCode").addEventListener("click", async () => {
   if (!currentOrder?.id) return;
+
   try {
     await navigator.clipboard.writeText(currentOrder.id);
     $("copyOrderCode").textContent = "Kode berhasil disalin";
   } catch {
     $("validateOrderCode").value = currentOrder.id;
     $("validateOrderCode").focus();
+
     alert("Kode ditampilkan di kotak validasi. Silakan salin secara manual.");
   }
 });
 
 $("validateOrderButton").addEventListener("click", async () => {
-  const enteredCode = $("validateOrderCode").value.trim().toUpperCase();
+  const enteredCode = $("validateOrderCode").value
+    .trim()
+    .toUpperCase();
+
   const status = $("validationResult");
+
   validatedUploadConfig = null;
   $("proofUploadArea").hidden = true;
 
@@ -553,29 +695,38 @@ $("validateOrderButton").addEventListener("click", async () => {
     status.textContent = "Buat pesanan terlebih dahulu.";
     return;
   }
+
   if (!enteredCode) {
     status.className = "order-result error";
     status.textContent = "Masukkan kode pesanan.";
     return;
   }
+
   if (enteredCode !== currentOrder.id) {
     status.className = "order-result error";
-    status.textContent = "Kode tidak cocok dengan pesanan yang baru dibuat. Periksa kembali kode pesanan.";
+    status.textContent =
+      "Kode tidak cocok dengan pesanan yang baru dibuat. Periksa kembali kode pesanan.";
     return;
   }
 
   const button = $("validateOrderButton");
+
   button.disabled = true;
   button.textContent = "Memvalidasi...";
   status.className = "order-result";
   status.textContent = "Memeriksa kode pesanan ke server...";
 
   try {
-    // Endpoint signature hanya memberikan signature jika pesanan ada dan bukti belum tersimpan.
-    const config = await apiPost("payment-proof-signature", {order_code:enteredCode});
+    const config = await apiPost("payment-proof-signature", {
+      order_code: enteredCode
+    });
+
     validatedUploadConfig = config;
+
     status.className = "order-result success";
-    status.textContent = "Kode berhasil divalidasi oleh server. Sekarang kamu bisa mengunggah bukti transfer.";
+    status.textContent =
+      "Kode berhasil divalidasi oleh server. Sekarang kamu bisa mengunggah bukti transfer.";
+
     $("proofUploadArea").hidden = false;
   } catch (error) {
     status.className = "order-result error";
@@ -589,20 +740,24 @@ $("validateOrderButton").addEventListener("click", async () => {
 $("paymentProof").addEventListener("change", event => {
   const input = event.target;
   const preview = $("proofPreview");
+
   if (proofPreviewUrl) {
     URL.revokeObjectURL(proofPreviewUrl);
     proofPreviewUrl = null;
   }
+
   preview.replaceChildren();
   preview.className = "";
+
   const file = input.files[0];
   if (!file) return;
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    alert("Pilih file JPG, PNG, WEBP, atau PDF.");
+    alert("Pilih file JPG, PNG, atau WEBP.");
     input.value = "";
     return;
   }
+
   if (file.size > MAX_FILE_SIZE) {
     alert("Ukuran bukti transfer maksimal 5 MB.");
     input.value = "";
@@ -610,28 +765,28 @@ $("paymentProof").addEventListener("change", event => {
   }
 
   preview.className = "proof-preview";
+
   const label = document.createElement("p");
   label.className = "note";
   label.textContent = "Bukti transfer dipilih: " + file.name;
   preview.appendChild(label);
 
-  if (file.type.startsWith("image/")) {
-    proofPreviewUrl = URL.createObjectURL(file);
-    const img = document.createElement("img");
-    img.src = proofPreviewUrl;
-    img.alt = "Pratinjau bukti transfer";
-    preview.appendChild(img);
-  } else {
-    const info = document.createElement("p");
-    info.className = "note";
-    info.textContent = "File PDF siap diunggah.";
-    preview.appendChild(info);
-  }
+  proofPreviewUrl = URL.createObjectURL(file);
+
+  const img = document.createElement("img");
+  img.src = proofPreviewUrl;
+  img.alt = "Pratinjau bukti transfer";
+  preview.appendChild(img);
 });
+
 function buildOrderMessage(order, fileName) {
-  const lines = order.items.map(item =>
-    `- ${item.name} x${item.quantity}: ${rupiah(Number(item.price || 0) * Number(item.quantity || 0))}`
-  );
+  const lines = order.items.map(item => {
+    const price = Number(item.price || 0);
+    const quantity = Number(item.quantity || 0);
+
+    return `- ${item.name} x${quantity}: ${rupiah(price * quantity)}`;
+  });
+
   return [
     "*PESANAN — ESSENCE PERFUME ATELIER*",
     "",
@@ -656,30 +811,66 @@ function buildOrderMessage(order, fileName) {
     `Nama file bukti transfer: ${fileName}`,
     "Bukti transfer sudah diunggah ke sistem dan menunggu verifikasi admin.",
     "Mohon periksa bukti pembayaran dan konfirmasi pesanan ini."
-  ].join("\\n");
+  ].join("\n");
 }
 
 $("sendProof").addEventListener("click", async () => {
-  if (!currentOrder?.id) return alert("Buat pesanan terlebih dahulu.");
-  if (!validatedUploadConfig) return alert("Validasi kode pesanan terlebih dahulu.");
-  const file = $("paymentProof").files[0];
-  if (!file) return alert("Pilih foto atau PDF bukti transfer terlebih dahulu.");
-  if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE) {
-    return alert("Format atau ukuran file tidak valid. Maksimal 5 MB.");
+  if (!currentOrder?.id) {
+    alert("Buat pesanan terlebih dahulu.");
+    return;
   }
-  if (!validAdminNumber(CONFIG.adminWhatsApp)) return alert("Periksa nomor WhatsApp admin.");
+
+  if (!validatedUploadConfig) {
+    alert("Validasi kode pesanan terlebih dahulu.");
+    return;
+  }
+
+  const file = $("paymentProof").files[0];
+
+  if (!file) {
+    alert("Pilih foto bukti transfer terlebih dahulu.");
+    return;
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE) {
+    alert("Format atau ukuran file tidak valid. Maksimal 5 MB.");
+    return;
+  }
+
+  if (!validAdminNumber(CONFIG.adminWhatsApp)) {
+    alert("Periksa nomor WhatsApp admin.");
+    return;
+  }
 
   const button = $("sendProof");
   const oldText = button.textContent;
+
   button.disabled = true;
   button.textContent = "Mengunggah bukti...";
+
   $("validationResult").className = "order-result";
-  $("validationResult").textContent = "Mengunggah bukti transfer ke penyimpanan...";
+  $("validationResult").textContent =
+    "Mengunggah bukti transfer ke Cloudinary...";
 
   try {
-    // Pakai parameter dan signature persis dari API signature.
     const cfg = validatedUploadConfig;
+
+    // Pastikan signature yang dipakai berasal dari server
+    // dan cocok dengan kode pesanan aktif.
+    if (
+      !cfg ||
+      !cfg.signature ||
+      !cfg.cloud_name ||
+      !cfg.public_id ||
+      cfg.public_id !== currentOrder.id
+    ) {
+      throw new Error(
+        "Konfigurasi upload tidak cocok dengan kode pesanan. Validasi ulang kode pesanan."
+      );
+    }
+
     const uploadData = new FormData();
+
     uploadData.append("file", file);
     uploadData.append("api_key", cfg.api_key);
     uploadData.append("timestamp", String(cfg.timestamp));
@@ -688,54 +879,100 @@ $("sendProof").addEventListener("click", async () => {
     uploadData.append("overwrite", String(cfg.overwrite));
     uploadData.append("type", cfg.type);
     uploadData.append("upload_preset", cfg.upload_preset);
-    uploadData.append("allowed_formats", Array.isArray(cfg.allowed_formats) ? cfg.allowed_formats.join(",") : String(cfg.allowed_formats));
-    uploadData.append("max_file_size", String(cfg.max_file_size));
+    uploadData.append(
+      "allowed_formats",
+      Array.isArray(cfg.allowed_formats)
+        ? cfg.allowed_formats.join(",")
+        : String(cfg.allowed_formats)
+    );
+
+    // Jangan kirim max_file_size di sini karena parameter
+    // tersebut tidak dimasukkan ke signature Cloudinary.
     uploadData.append("signature", cfg.signature);
 
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cfg.cloud_name)}/image/upload`;
-    const uploadResponse = await fetch(uploadUrl, {method:"POST", body:uploadData});
-    const uploaded = await uploadResponse.json().catch(() => ({}));
-    if (!uploadResponse.ok || !uploaded.public_id || !uploaded.version || !uploaded.format) {
-      throw new Error(uploaded.error?.message || "Upload bukti ke Cloudinary gagal.");
-    }
+    const uploadUrl =
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(cfg.cloud_name)}/image/upload`;
 
-    $("validationResult").textContent = "Upload berhasil. Menyimpan konfirmasi bukti ke database...";
-    const saved = await apiPost("payment-proof-save", {
-      order_code:currentOrder.id,
-      public_id:uploaded.public_id,
-      version:uploaded.version,
-      format:uploaded.format
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "POST",
+      body: uploadData
     });
 
-    if (!saved.success) throw new Error(saved.error || "Bukti gagal disimpan.");
-    currentOrder.paymentStatus = saved.payment_status || "awaiting_verification";
+    const uploaded = await uploadResponse.json().catch(() => ({}));
+
+    if (!uploadResponse.ok) {
+      console.error("Cloudinary upload error:", uploaded);
+
+      throw new Error(
+        uploaded.error?.message || "Upload bukti ke Cloudinary gagal."
+      );
+    }
+
+    if (
+      !uploaded.public_id ||
+      !uploaded.version ||
+      !uploaded.format
+    ) {
+      console.error("Respons Cloudinary tidak lengkap:", uploaded);
+
+      throw new Error("Data file dari Cloudinary tidak lengkap.");
+    }
+
+    $("validationResult").textContent =
+      "Upload berhasil. Menyimpan bukti pembayaran ke database...";
+
+    const saved = await apiPost("payment-proof-save", {
+      order_code: currentOrder.id,
+      public_id: uploaded.public_id,
+      version: Number(uploaded.version),
+      format: String(uploaded.format).toLowerCase()
+    });
+
+    currentOrder.paymentStatus =
+      saved.payment_status || "awaiting_verification";
 
     const message = buildOrderMessage(currentOrder, file.name);
-    const whatsappUrl = "https://wa.me/" + CONFIG.adminWhatsApp + "?text=" + encodeURIComponent(message);
+
+    const whatsappUrl =
+      "https://wa.me/" +
+      CONFIG.adminWhatsApp +
+      "?text=" +
+      encodeURIComponent(message);
+
     $("validationResult").className = "order-result success";
-    $("validationResult").textContent = "Bukti berhasil diunggah dan tersimpan. Status pembayaran: menunggu verifikasi admin. WhatsApp akan dibuka; tekan tombol Kirim di WhatsApp untuk mengirim rincian.";
+    $("validationResult").textContent =
+      "Bukti berhasil diunggah dan tersimpan. Status pembayaran: menunggu verifikasi admin. Tekan tombol di bawah untuk mengirim rincian ke WhatsApp.";
+
     const openButton = document.createElement("button");
     openButton.type = "button";
     openButton.className = "btn whatsapp";
     openButton.style.width = "100%";
     openButton.style.marginTop = "10px";
     openButton.textContent = "Buka WhatsApp admin";
-    openButton.addEventListener("click", () => window.open(whatsappUrl, "_blank", "noopener"));
+
+    openButton.addEventListener("click", () => {
+      window.open(whatsappUrl, "_blank", "noopener");
+    });
+
     $("validationResult").appendChild(document.createElement("br"));
     $("validationResult").appendChild(openButton);
 
-    // Coba buka WhatsApp setelah upload sukses. Jika browser memblokir popup,
-    // tombol di atas tetap tersedia.
-    const win = window.open(whatsappUrl, "_blank", "noopener");
-    if (!win) openButton.focus();
-    $("sendProof").textContent = "Bukti sudah diunggah";
+    // Tombol WhatsApp ditampilkan; tidak memaksa popup
+    // yang bisa diblokir browser.
     validatedUploadConfig = null;
+    button.textContent = "Bukti sudah diunggah";
   } catch (error) {
+    console.error("Payment proof error:", error);
+
     $("validationResult").className = "order-result error";
-    $("validationResult").textContent = error.message || "Upload atau penyimpanan bukti gagal. Coba lagi.";
+    $("validationResult").textContent =
+      error.message || "Upload atau penyimpanan bukti gagal. Coba lagi.";
   } finally {
-    button.disabled = false;
-    if (button.textContent !== "Bukti sudah diunggah") button.textContent = oldText;
+    if (button.textContent !== "Bukti sudah diunggah") {
+      button.textContent = oldText;
+    }
+
+    button.disabled = button.textContent === "Bukti sudah diunggah";
   }
 });
 
