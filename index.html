@@ -152,12 +152,12 @@ footer {text-align:center;padding:30px 15px;border-top:1px solid var(--line);fon
     <label class="note" for="search">Cari produk di kedua koleksi</label>
     <input class="search" id="search" placeholder="Cari nama parfum..." aria-label="Cari parfum">
     <div class="section-head" style="margin-top:18px">
-      <div><div class="eyebrow">SAMPLE COLLECTION</div><h2>Produk Contoh</h2><p>Produk demo bawaan website.</p></div>
+      <div><div class="eyebrow">SAMPLE COLLECTION</div><h2>Produk Contoh</h2><p>Produk contoh dapat dikelola melalui halaman admin.</p></div>
     </div>
     <div class="grid" id="demoProductsGrid"></div>
     <div style="border-top:2px solid var(--gold);margin:42px 0 28px"></div>
     <div class="section-head" style="margin-top:0">
-      <div><div class="eyebrow">FULL COLLECTION</div><h2>Produk Full</h2><p>Produk tambahan yang dikelola melalui halaman admin.</p></div>
+      <div><div class="eyebrow">FULL COLLECTION</div><h2>Produk Full</h2><p>Koleksi utama tambahan yang juga dikelola melalui halaman admin.</p></div>
     </div>
     <div id="fullProductsStatus" class="note" role="status">Memuat produk tambahan…</div>
     <div class="grid" id="fullProductsGrid"></div>
@@ -427,8 +427,8 @@ function renderProducts() {
   $("demoProductsGrid").innerHTML = demo.map(cardHTML).join("") || '<p class="note">Produk contoh tidak ditemukan.</p>';
   $("fullProductsGrid").innerHTML = full.map(cardHTML).join("");
   $("fullProductsStatus").textContent = fullProducts.length === 0
-    ? (q ? "Tidak ada produk full yang cocok dengan pencarian." : "Belum ada produk tambahan. Tambahkan melalui halaman admin.")
-    : `${fullProducts.length} produk tambahan tersedia.`;
+    ? (q ? "Tidak ada produk full yang cocok dengan pencarian." : "Belum ada produk full. Tambahkan melalui halaman admin.")
+    : `${fullProducts.length} produk full tersedia.`;
   products = [...demoProducts, ...fullProducts];
 }
 
@@ -438,10 +438,16 @@ async function loadFullProducts() {
     const response = await fetch(`${API_BASE}/products`, {cache:"no-store"});
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) throw new Error(data.error || "Gagal memuat produk.");
-    fullProducts = (data.products || []).map(p => ({
-      ...p, id:`full-${p.id}`, dbId:Number(p.id), price:Number(p.price),
-      image:String(p.image || ""), description:String(p.description || ""), notes:String(p.notes || "EAU DE PARFUM")
+    const rows = (data.products || []).map(p => ({
+      ...p, id:`${p.category === "sample" ? "sample" : "full"}-${p.id}`, dbId:Number(p.id), price:Number(p.price),
+      image:String(p.image || ""), description:String(p.description || ""), notes:String(p.notes || "EAU DE PARFUM"), category:String(p.category || "full")
     }));
+    const sampleRows = rows.filter(p => p.category === "sample");
+    // Keep the built-in examples as a temporary fallback if the API cannot return them.
+    if (sampleRows.length) {
+      demoProducts.splice(0, demoProducts.length, ...sampleRows);
+    }
+    fullProducts = rows.filter(p => p.category !== "sample");
     renderProducts();
   } catch (error) {
     status.textContent = "Produk tambahan belum dapat dimuat dari server. Pastikan API produk sudah dipasang dan database dapat diakses.";
