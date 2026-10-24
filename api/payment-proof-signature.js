@@ -95,15 +95,14 @@ module.exports = async function handler(req, res) {
     const timestamp = Math.floor(Date.now() / 1000);
 
     const params = {
-      timestamp,
-      folder: FOLDER,
-      public_id: orderCode,
-      overwrite: false,
-      type: "authenticated",
-      upload_preset: UPLOAD_PRESET,
-      allowed_formats: ALLOWED_FORMATS.join(","),
-      max_file_size: MAX_FILE_SIZE
-    };
+  timestamp,
+  folder: FOLDER,
+  public_id: orderCode,
+  overwrite: false,
+  type: "authenticated",
+  upload_preset: UPLOAD_PRESET,
+  allowed_formats: ALLOWED_FORMATS.join(",")
+};
 
     const signature = cloudinary.utils.api_sign_request(
       params,
