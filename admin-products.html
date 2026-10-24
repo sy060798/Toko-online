@@ -433,10 +433,14 @@ async function remove(id) {
  * Saat pengguna memilih file, tampilkan pratinjau lokal.
  * Belum ada file yang diunggah sampai tombol Upload gambar ditekan.
  */
-$("imageFile").addEventListener("change", () => {
-  resetFileSelection();
 
+$("imageFile").addEventListener("change", () => {
+  // Baca file terlebih dahulu sebelum membersihkan pratinjau lama.
   const file = $("imageFile").files[0];
+
+  releaseLocalPreview();
+  selectedFile = null;
+  $("uploadBtn").disabled = true;
 
   if (!file) {
     showImagePreview($("image").value.trim());
@@ -446,14 +450,17 @@ $("imageFile").addEventListener("change", () => {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     $("imageFile").value = "";
     showImagePreview($("image").value.trim());
-    uploadMessage("Pilih file gambar JPG, PNG, WEBP, GIF, atau AVIF.", "error");
+    uploadMessage(
+      "Pilih gambar JPG, PNG, WEBP, GIF, atau AVIF.",
+      "error"
+    );
     return;
   }
 
   if (file.size > MAX_IMAGE_SIZE) {
     $("imageFile").value = "";
     showImagePreview($("image").value.trim());
-    uploadMessage("Ukuran gambar melebihi 5 MB.", "error");
+    uploadMessage("Ukuran gambar maksimal 5 MB.", "error");
     return;
   }
 
@@ -462,12 +469,13 @@ $("imageFile").addEventListener("change", () => {
   showImagePreview(localPreviewUrl);
 
   $("uploadBtn").disabled = false;
-  imageReady = !$("image").value.trim();
+  imageReady = true;
 
   uploadMessage(
-    `Dipilih: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). Klik Upload gambar.`
+    `Gambar dipilih: ${file.name}. Klik Upload gambar untuk melanjutkan.`
   );
 });
+
 
 /*
  * Meminta tanda tangan dari backend lalu mengunggah file langsung
