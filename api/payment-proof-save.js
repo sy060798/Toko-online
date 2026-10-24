@@ -2,216 +2,238 @@
 const cloudinary = require("cloudinary").v2;
 const { createClient } = require("@libsql/client");
 
+const FOLDER = "essence/payment-proofs";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_FORMATS = new Set(["jpg", "jpeg", "png", "webp", "pdf"]);
+const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp"];
 
 function json(res, status, data) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Referrer-Policy", "no-referrer");
-
   return res.status(status).json(data);
 }
 
-function validOrderCode(value) {
-  return /^ESS-\d{8}-[A-Z0-9]{6}$/.test(value);
+function configure() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Konfigurasi Cloudinary belum lengkap.");
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    secure: true
+  });
+
+  return cloudinary;
 }
 
-module.exports = async function handler(req, res) {
+function getDb() {
+  if (!process.env.TURSO_DATABASE_URL ||
+      !process.env.TURSO_AUTH_TOKEN) {
+    throw new Error("Konfigurasi Turso belum lengkap.");
+  }
+
+  return createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN
+  });
+}
+
+module.exports = async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return json(res, 405, {
       success: false,
-      error: "Gunakan metode POST."
+      error: "Metode request tidak diizinkan."
     });
   }
-
-  const {
-    TURSO_DATABASE_URL: databaseUrl,
-    TURSO_AUTH_TOKEN: authToken,
-    CLOUDINARY_CLOUD_NAME: cloudName,
-    CLOUDINARY_API_KEY: apiKey,
-    CLOUDINARY_API_SECRET: apiSecret
-  } = process.env;
-
-  if (!databaseUrl || !authToken || !cloudName || !apiKey || !apiSecret) {
-    return json(res, 500, {
-      success: false,
-      error: "Konfigurasi server belum lengkap."
-    });
-  }
-
-  const body = req.body || {};
-  const orderCode = String(body.order_code || "").trim();
-  const publicId = String(body.public_id || "").trim();
-  const version = Number(body.version);
-  const format = String(body.format || "").trim().toLowerCase();
-
-  if (!validOrderCode(orderCode)) {
-    return json(res, 400, {
-      success: false,
-      error: "Kode pesanan tidak valid."
-    });
-  }
-
-  if (publicId !== orderCode) {
-    return json(res, 400, {
-      success: false,
-      error: "Identitas file tidak sesuai dengan kode pesanan."
-    });
-  }
-
-  if (!Number.isSafeInteger(version) || version <= 0) {
-    return json(res, 400, {
-      success: false,
-      error: "Versi file tidak valid."
-    });
-  }
-
-  if (!ALLOWED_FORMATS.has(format)) {
-    return json(res, 400, {
-      success: false,
-      error: "Format file tidak diizinkan."
-    });
-  }
-
-  let db;
 
   try {
-    cloudinary.config({
-      cloud_name: cloudName,
-      api_key: apiKey,
-      api_secret: apiSecret,
-      secure: true
-    });
+    const cloud = configure();
+    const db = getDb();
 
-    db = createClient({
-      url: databaseUrl,
-      authToken
-    });
+    const orderCode = String(
+      req.body?.order_code || ""
+    ).trim().toUpperCase();
 
-    const result = await db.execute({
-      sql: `SELECT order_code, payment_proof_public_id, payment_status
-            FROM orders
-            WHERE order_code = ?
-            LIMIT 1`,
+    const publicId = String(
+      req.body?.public_id || ""
+    ).trim();
+
+    const version = Number(req.body?.version);
+    const format = String(
+      req.body?.format || ""
+    ).trim().toLowerCase();
+
+    if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
+      return json(res, 400, {
+        success: false,
+        error: "Kode pesanan tidak valid."
+      });
+    }
+
+    // Terima hanya dua bentuk ID yang sesuai dengan
+    // kode pesanan, bukan ID arbitrer dari browser.
+    const allowedPublicIds = [
+      orderCode,
+      `${FOLDER}/${orderCode}`
+    ];
+
+    if (!allowedPublicIds.includes(publicId)) {
+      console.error("Public ID tidak cocok:", {
+        orderCode,
+        receivedPublicId: publicId
+      });
+
+      return json(res, 400, {
+        success: false,
+        error: "Identitas file tidak sesuai dengan kode pesanan."
+      });
+    }
+
+    if (!Number.isSafeInteger(version) || version <= 0) {
+      return json(res, 400, {
+        success: false,
+        error: "Versi file tidak valid."
+      });
+    }
+
+    if (!ALLOWED_FORMATS.includes(format)) {
+      return json(res, 400, {
+        success: false,
+        error: "Format file tidak diizinkan."
+      });
+    }
+
+    const orderResult = await db.execute({
+      sql: `
+        SELECT order_code, payment_status
+        FROM orders
+        WHERE order_code = ?
+        LIMIT 1
+      `,
       args: [orderCode]
     });
 
-    if (result.rows.length === 0) {
+    if (!orderResult.rows.length) {
       return json(res, 404, {
         success: false,
         error: "Pesanan tidak ditemukan."
       });
     }
 
-    const order = result.rows[0];
-
-    if (order.payment_proof_public_id) {
+    if (orderResult.rows[0].payment_status === "paid") {
       return json(res, 409, {
         success: false,
-        error: "Bukti pembayaran sudah tersimpan."
+        error: "Pesanan ini sudah dibayar."
       });
     }
 
-    if (
-      order.payment_status !== "awaiting_payment" &&
-      order.payment_status !== "awaiting_verification"
-    ) {
-      return json(res, 409, {
-        success: false,
-        error: "Status pesanan tidak mengizinkan upload bukti."
+    // Verifikasi file langsung ke Cloudinary.
+    // Coba ID yang diterima; jika folder merupakan bagian
+    // dari public_id, gunakan ID tersebut apa adanya.
+    let asset;
+
+    try {
+      asset = await cloud.api.resource(publicId, {
+        resource_type: "image",
+        type: "authenticated"
       });
-    }
+    } catch (firstError) {
+      // Jangan menebak ID lain atau menyimpan file
+      // yang belum berhasil diverifikasi.
+      console.error("Cloudinary resource lookup gagal:", {
+        publicId,
+        message: firstError.message
+      });
 
-    // Verifikasi aset di sisi server.
-    // Konfigurasi upload harus menggunakan resource_type=image
-    // dan type=authenticated agar sesuai dengan pemeriksaan ini.
-    const asset = await cloudinary.api.resource(publicId, {
-      resource_type: "image",
-      type: "authenticated"
-    });
-
-    const assetFormat = String(asset.format || "").toLowerCase();
-
-    if (
-      asset.public_id !== orderCode ||
-      Number(asset.version) !== version ||
-      assetFormat !== format ||
-      asset.type !== "authenticated" ||
-      asset.resource_type !== "image" ||
-      !Number.isSafeInteger(Number(asset.bytes)) ||
-      Number(asset.bytes) <= 0 ||
-      Number(asset.bytes) > MAX_FILE_SIZE ||
-      !ALLOWED_FORMATS.has(assetFormat)
-    ) {
       return json(res, 400, {
         success: false,
-        error: "File tidak memenuhi ketentuan upload."
+        error: "File bukti tidak ditemukan di Cloudinary. Periksa folder dan public_id."
       });
     }
 
-    // Update bersyarat mencegah dua permintaan menyimpan bukti
-    // untuk pesanan yang sama secara bersamaan.
-    const saved = await db.execute({
-      sql: `UPDATE orders
-            SET payment_proof_public_id = ?,
-                payment_proof_version = ?,
-                payment_proof_format = ?,
-                payment_proof_resource_type = ?,
-                payment_proof_uploaded_at = ?,
-                payment_status = 'awaiting_verification'
-            WHERE order_code = ?
-              AND payment_proof_public_id IS NULL
-              AND payment_status IN ('awaiting_payment', 'awaiting_verification')`,
+    if (
+      asset.public_id !== publicId ||
+      Number(asset.version) !== version ||
+      String(asset.format || "").toLowerCase() !== format ||
+      asset.resource_type !== "image" ||
+      asset.type !== "authenticated" ||
+      Number(asset.bytes) > MAX_FILE_SIZE ||
+      !ALLOWED_FORMATS.includes(
+        String(asset.format || "").toLowerCase()
+      )
+    ) {
+      console.error("Validasi aset Cloudinary gagal:", {
+        expectedPublicId: publicId,
+        actualPublicId: asset.public_id,
+        expectedVersion: version,
+        actualVersion: asset.version,
+        format: asset.format,
+        resourceType: asset.resource_type,
+        type: asset.type,
+        bytes: asset.bytes
+      });
+
+      return json(res, 400, {
+        success: false,
+        error: "Data file di Cloudinary tidak cocok atau formatnya tidak diizinkan."
+      });
+    }
+
+    const uploadedAt = new Date().toISOString();
+
+    const update = await db.execute({
+      sql: `
+        UPDATE orders
+        SET
+          payment_proof_url = ?,
+          payment_proof_public_id = ?,
+          payment_proof_version = ?,
+          payment_proof_resource_type = ?,
+          payment_proof_uploaded_at = ?,
+          payment_proof_format = ?,
+          payment_status = 'awaiting_verification'
+        WHERE order_code = ?
+          AND payment_status != 'paid'
+      `,
       args: [
+        asset.secure_url,
         asset.public_id,
         Number(asset.version),
-        assetFormat,
         asset.resource_type,
-        new Date().toISOString(),
+        uploadedAt,
+        String(asset.format).toLowerCase(),
         orderCode
       ]
     });
 
-    if (saved.rowsAffected !== 1) {
+    if (Number(update.rowsAffected || 0) !== 1) {
       return json(res, 409, {
         success: false,
-        error: "Bukti sudah tersimpan atau status pesanan berubah."
+        error: "Status pesanan berubah. Muat ulang pesanan dan coba lagi."
       });
     }
 
     return json(res, 200, {
       success: true,
+      message: "Bukti pembayaran berhasil disimpan.",
       order_code: orderCode,
-      payment_status: "awaiting_verification",
-      message: "Bukti pembayaran tersimpan dan menunggu verifikasi admin."
+      payment_status: "awaiting_verification"
     });
   } catch (error) {
-    console.error("Payment proof save error:", {
+    console.error("Payment proof save API error:", {
       message: error.message,
-      code: error.code,
-      http_code: error.http_code
+      code: error.code
     });
-
-    if (Number(error.http_code) === 404) {
-      return json(res, 400, {
-        success: false,
-        error: "File belum ditemukan. Pastikan upload berhasil."
-      });
-    }
 
     return json(res, 500, {
       success: false,
-      error: "Gagal memverifikasi atau menyimpan bukti pembayaran."
+      error: "Gagal menyimpan bukti pembayaran."
     });
-  } finally {
-    if (db) {
-      try {
-        db.close();
-      } catch (_) {}
-    }
   }
 };
