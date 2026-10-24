@@ -3,20 +3,25 @@ const cloudinary = require("cloudinary").v2;
 const { createClient } = require("@libsql/client");
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp", "pdf"];
+const ALLOWED_FORMATS = new Set(["jpg", "jpeg", "png", "webp", "pdf"]);
 
 function json(res, status, data) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
 
   return res.status(status).json(data);
+}
+
+function validOrderCode(value) {
+  return /^ESS-\d{8}-[A-Z0-9]{6}$/.test(value);
 }
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
-
     return json(res, 405, {
       success: false,
       error: "Gunakan metode POST."
@@ -31,13 +36,7 @@ module.exports = async function handler(req, res) {
     CLOUDINARY_API_SECRET: apiSecret
   } = process.env;
 
-  if (
-    !databaseUrl ||
-    !authToken ||
-    !cloudName ||
-    !apiKey ||
-    !apiSecret
-  ) {
+  if (!databaseUrl || !authToken || !cloudName || !apiKey || !apiSecret) {
     return json(res, 500, {
       success: false,
       error: "Konfigurasi server belum lengkap."
@@ -48,9 +47,9 @@ module.exports = async function handler(req, res) {
   const orderCode = String(body.order_code || "").trim();
   const publicId = String(body.public_id || "").trim();
   const version = Number(body.version);
-  const format = String(body.format || "").toLowerCase();
+  const format = String(body.format || "").trim().toLowerCase();
 
-  if (!/^ESS-\d{8}-[A-Z0-9]{6}$/.test(orderCode)) {
+  if (!validOrderCode(orderCode)) {
     return json(res, 400, {
       success: false,
       error: "Kode pesanan tidak valid."
@@ -71,7 +70,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (!ALLOWED_FORMATS.includes(format)) {
+  if (!ALLOWED_FORMATS.has(format)) {
     return json(res, 400, {
       success: false,
       error: "Format file tidak diizinkan."
@@ -84,7 +83,8 @@ module.exports = async function handler(req, res) {
     cloudinary.config({
       cloud_name: cloudName,
       api_key: apiKey,
-      api_secret: apiSecret
+      api_secret: apiSecret,
+      secure: true
     });
 
     db = createClient({
@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
     });
 
     const result = await db.execute({
-      sql: `SELECT order_code, payment_proof_public_id
+      sql: `SELECT order_code, payment_proof_public_id, payment_status
             FROM orders
             WHERE order_code = ?
             LIMIT 1`,
@@ -107,47 +107,54 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (result.rows[0].payment_proof_public_id) {
+    const order = result.rows[0];
+
+    if (order.payment_proof_public_id) {
       return json(res, 409, {
         success: false,
         error: "Bukti pembayaran sudah tersimpan."
       });
     }
 
-    // Verifikasi aset langsung ke Cloudinary.
-    // Jangan mempercayai metadata yang dikirim browser.
+    if (
+      order.payment_status !== "awaiting_payment" &&
+      order.payment_status !== "awaiting_verification"
+    ) {
+      return json(res, 409, {
+        success: false,
+        error: "Status pesanan tidak mengizinkan upload bukti."
+      });
+    }
+
+    // Verifikasi aset di sisi server.
+    // Konfigurasi upload harus menggunakan resource_type=image
+    // dan type=authenticated agar sesuai dengan pemeriksaan ini.
     const asset = await cloudinary.api.resource(publicId, {
       resource_type: "image",
       type: "authenticated"
     });
 
+    const assetFormat = String(asset.format || "").toLowerCase();
+
     if (
       asset.public_id !== orderCode ||
-      asset.version !== version ||
-      asset.format !== format ||
+      Number(asset.version) !== version ||
+      assetFormat !== format ||
       asset.type !== "authenticated" ||
       asset.resource_type !== "image" ||
-      !Number.isFinite(asset.bytes) ||
-      asset.bytes <= 0 ||
-      asset.bytes > MAX_FILE_SIZE
+      !Number.isSafeInteger(Number(asset.bytes)) ||
+      Number(asset.bytes) <= 0 ||
+      Number(asset.bytes) > MAX_FILE_SIZE ||
+      !ALLOWED_FORMATS.has(assetFormat)
     ) {
       return json(res, 400, {
         success: false,
-        error: "File Cloudinary tidak memenuhi ketentuan."
+        error: "File tidak memenuhi ketentuan upload."
       });
     }
 
-    if (
-      !ALLOWED_FORMATS.includes(String(asset.format).toLowerCase())
-    ) {
-      return json(res, 400, {
-        success: false,
-        error: "Format file tidak diizinkan."
-      });
-    }
-
-    // Simpan metadata aset dan status konfirmasi.
-    // Pembayaran tetap menunggu verifikasi admin.
+    // Update bersyarat mencegah dua permintaan menyimpan bukti
+    // untuk pesanan yang sama secara bersamaan.
     const saved = await db.execute({
       sql: `UPDATE orders
             SET payment_proof_public_id = ?,
@@ -155,16 +162,16 @@ module.exports = async function handler(req, res) {
                 payment_proof_format = ?,
                 payment_proof_resource_type = ?,
                 payment_proof_uploaded_at = ?,
-                payment_status = ?
+                payment_status = 'awaiting_verification'
             WHERE order_code = ?
-              AND payment_proof_public_id IS NULL`,
+              AND payment_proof_public_id IS NULL
+              AND payment_status IN ('awaiting_payment', 'awaiting_verification')`,
       args: [
         asset.public_id,
-        asset.version,
-        asset.format,
+        Number(asset.version),
+        assetFormat,
         asset.resource_type,
         new Date().toISOString(),
-        "awaiting_verification",
         orderCode
       ]
     });
@@ -172,7 +179,7 @@ module.exports = async function handler(req, res) {
     if (saved.rowsAffected !== 1) {
       return json(res, 409, {
         success: false,
-        error: "Bukti sudah tersimpan atau pesanan berubah."
+        error: "Bukti sudah tersimpan atau status pesanan berubah."
       });
     }
 
@@ -180,17 +187,21 @@ module.exports = async function handler(req, res) {
       success: true,
       order_code: orderCode,
       payment_status: "awaiting_verification",
-      message: "Bukti pembayaran berhasil disimpan dan menunggu verifikasi admin."
+      message: "Bukti pembayaran tersimpan dan menunggu verifikasi admin."
     });
   } catch (error) {
-    if (error.http_code === 404) {
+    console.error("Payment proof save error:", {
+      message: error.message,
+      code: error.code,
+      http_code: error.http_code
+    });
+
+    if (Number(error.http_code) === 404) {
       return json(res, 400, {
         success: false,
-        error: "File belum ditemukan di Cloudinary. Pastikan upload berhasil."
+        error: "File belum ditemukan. Pastikan upload berhasil."
       });
     }
-
-    console.error("Gagal menyimpan bukti pembayaran:", error.message);
 
     return json(res, 500, {
       success: false,
