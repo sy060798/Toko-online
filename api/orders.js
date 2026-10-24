@@ -277,7 +277,8 @@ module.exports = async function handler(req, res) {
       success: false,
       error: "Gagal membuat kode pesanan."
     });
-  } catch (error) {
+  
+} catch (error) {
   console.error("Order API error:", {
     message: error.message,
     code: error.code,
@@ -288,7 +289,8 @@ module.exports = async function handler(req, res) {
     success: false,
     error: "Pesanan gagal disimpan. Periksa log API."
   });
-} finally {
+}
+ finally {
     if (db) {
       try {
         db.close();
